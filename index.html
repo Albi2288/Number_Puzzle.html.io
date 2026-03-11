@@ -5,114 +5,326 @@
 <title>Number Puzzle</title>
 
 <style>
+
 body{
-    font-family: Arial;
-    text-align:center;
-    background:#f4f4f4;
+font-family:Arial, sans-serif;
+text-align:center;
+margin:0;
+background:linear-gradient(135deg,#4facfe,#00f2fe);
+color:white;
 }
 
 h1{
-    margin-top:30px;
+margin-top:20px;
 }
 
-#puzzle{
-    width:300px;
-    height:300px;
-    margin:30px auto;
-    display:grid;
-    grid-template-columns:repeat(3,1fr);
-    grid-template-rows:repeat(3,1fr);
-    gap:5px;
+#controls{
+margin:15px;
 }
 
-.tile{
-    background:#4CAF50;
-    color:white;
-    font-size:30px;
-    display:flex;
-    justify-content:center;
-    align-items:center;
-    cursor:pointer;
-    border-radius:10px;
-}
-
-.empty{
-    background:#ddd;
-    cursor:default;
+select,button{
+padding:8px 12px;
+border:none;
+border-radius:6px;
+font-size:14px;
 }
 
 button{
-    padding:10px 20px;
-    font-size:16px;
-    border:none;
-    background:#2196F3;
-    color:white;
-    border-radius:6px;
-    cursor:pointer;
+background:#ff9800;
+color:white;
+cursor:pointer;
 }
+
+#puzzle{
+margin:20px auto;
+width:320px;
+height:320px;
+display:grid;
+gap:6px;
+touch-action:none;
+}
+
+.tile{
+display:flex;
+justify-content:center;
+align-items:center;
+font-size:22px;
+font-weight:bold;
+border-radius:10px;
+cursor:pointer;
+background:linear-gradient(145deg,#ffcc70,#ff8c00);
+box-shadow:0 4px 10px rgba(0,0,0,0.3);
+transition:transform .15s;
+}
+
+.tile:active{
+transform:scale(0.92);
+}
+
+.empty{
+background:transparent;
+box-shadow:none;
+cursor:default;
+}
+
+#leaderboard{
+background:rgba(255,255,255,0.15);
+backdrop-filter:blur(8px);
+padding:10px;
+margin:20px auto;
+width:200px;
+border-radius:10px;
+}
+
 </style>
 </head>
 
 <body>
 
-<h1>Number Puzzle</h1>
-<p>Ordne die Zahlen von 1 bis 8!</p>
+<h1>🧩 Number Puzzle</h1>
+
+<div id="controls">
+
+Größe:
+
+<select id="sizeSelect">
+<option value="3">3x3</option>
+<option value="4" selected>4x4</option>
+<option value="5">5x5</option>
+<option value="6">6x6</option>
+</select>
+
+<button onclick="startGame()">Neu starten</button>
+
+<p>⏱ Zeit: <span id="timer">0</span> s</p>
+
+</div>
 
 <div id="puzzle"></div>
 
-<button onclick="shuffle()">Neu mischen</button>
+<div id="leaderboard">
+<h3>🏆 Bestenliste</h3>
+<ul id="scores"></ul>
+</div>
 
 <script>
 
-let puzzle = document.getElementById("puzzle");
-let tiles = [1,2,3,4,5,6,7,8,""];
+let size=4
+let tiles=[]
+let timer=0
+let timerInterval
+
+const puzzle=document.getElementById("puzzle")
+const timerDisplay=document.getElementById("timer")
+const scoresList=document.getElementById("scores")
+
+function startGame(){
+
+size=parseInt(document.getElementById("sizeSelect").value)
+
+tiles=[]
+
+for(let i=1;i<size*size;i++) tiles.push(i)
+tiles.push("")
+
+puzzle.style.gridTemplateColumns=`repeat(${size},1fr)`
+puzzle.style.gridTemplateRows=`repeat(${size},1fr)`
+
+shuffleSolvable()
+
+timer=0
+timerDisplay.textContent=0
+
+clearInterval(timerInterval)
+
+timerInterval=setInterval(()=>{
+timer++
+timerDisplay.textContent=timer
+},1000)
+
+render()
+loadScores()
+
+}
 
 function render(){
-    puzzle.innerHTML="";
 
-    tiles.forEach((num,index)=>{
-        let div=document.createElement("div");
+puzzle.innerHTML=""
 
-        if(num===""){
-            div.className="tile empty";
-        }else{
-            div.className="tile";
-            div.innerText=num;
-            div.onclick=()=>move(index);
-        }
+tiles.forEach((num,i)=>{
 
-        puzzle.appendChild(div);
-    });
+let div=document.createElement("div")
+
+if(num===""){
+div.className="tile empty"
+}else{
+div.className="tile"
+div.textContent=num
+div.onclick=()=>move(i)
+}
+
+puzzle.appendChild(div)
+
+})
+
 }
 
 function move(i){
 
-    let emptyIndex = tiles.indexOf("");
+let empty=tiles.indexOf("")
 
-    let validMoves=[
-        i-1,i+1,i-3,i+3
-    ];
+let row=Math.floor(i/size)
+let col=i%size
 
-    if(validMoves.includes(emptyIndex)){
-        [tiles[i],tiles[emptyIndex]]=[tiles[emptyIndex],tiles[i]];
-        render();
-        checkWin();
-    }
+let erow=Math.floor(empty/size)
+let ecol=empty%size
+
+if(Math.abs(row-erow)+Math.abs(col-ecol)===1){
+
+[tiles[i],tiles[empty]]=[tiles[empty],tiles[i]]
+
+render()
+checkWin()
+
 }
 
-function shuffle(){
-    tiles.sort(()=>Math.random()-0.5);
-    render();
+}
+
+function shuffleSolvable(){
+
+do{
+
+for(let i=tiles.length-1;i>0;i--){
+let j=Math.floor(Math.random()*(i+1))
+;[tiles[i],tiles[j]]=[tiles[j],tiles[i]]
+}
+
+}while(!isSolvable() || isSolved())
+
+}
+
+function isSolved(){
+
+for(let i=0;i<tiles.length-1;i++){
+if(tiles[i]!==i+1) return false
+}
+
+return true
+
+}
+
+function isSolvable(){
+
+let inv=0
+
+for(let i=0;i<tiles.length;i++){
+for(let j=i+1;j<tiles.length;j++){
+if(tiles[i] && tiles[j] && tiles[i]>tiles[j]) inv++
+}
+}
+
+if(size%2===1){
+return inv%2===0
+}else{
+
+let emptyRow=size-Math.floor(tiles.indexOf("")/size)
+
+if(emptyRow%2===0){
+return inv%2===1
+}else{
+return inv%2===0
+}
+
+}
+
 }
 
 function checkWin(){
-    let win=[1,2,3,4,5,6,7,8,""];
-    if(JSON.stringify(tiles)===JSON.stringify(win)){
-        setTimeout(()=>alert("Gewonnen! 🎉"),100);
-    }
+
+for(let i=0;i<tiles.length-1;i++){
+if(tiles[i]!==i+1) return
 }
 
-render();
+clearInterval(timerInterval)
+
+saveScore(timer)
+
+setTimeout(()=>{
+alert("🎉 Gewonnen! Zeit: "+timer+" Sekunden")
+loadScores()
+},100)
+
+}
+
+function saveScore(time){
+
+let key="puzzle_"+size
+
+let scores=JSON.parse(localStorage.getItem(key))||[]
+
+scores.push(time)
+
+scores.sort((a,b)=>a-b)
+
+scores=scores.slice(0,5)
+
+localStorage.setItem(key,JSON.stringify(scores))
+
+}
+
+function loadScores(){
+
+let key="puzzle_"+size
+
+let scores=JSON.parse(localStorage.getItem(key))||[]
+
+scoresList.innerHTML=""
+
+scores.forEach((s,i)=>{
+
+let li=document.createElement("li")
+
+li.textContent=(i+1)+". "+s+" s"
+
+scoresList.appendChild(li)
+
+})
+
+}
+
+let startX,startY
+
+puzzle.addEventListener("touchstart",e=>{
+startX=e.touches[0].clientX
+startY=e.touches[0].clientY
+})
+
+puzzle.addEventListener("touchend",e=>{
+
+let dx=e.changedTouches[0].clientX-startX
+let dy=e.changedTouches[0].clientY-startY
+
+let empty=tiles.indexOf("")
+
+let target
+
+if(Math.abs(dx)>Math.abs(dy)){
+
+if(dx>30) target=empty-1
+else if(dx<-30) target=empty+1
+
+}else{
+
+if(dy>30) target=empty-size
+else if(dy<-30) target=empty+size
+
+}
+
+if(target>=0 && target<tiles.length) move(target)
+
+})
+
+startGame()
 
 </script>
 
