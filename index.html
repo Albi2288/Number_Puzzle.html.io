@@ -31,6 +31,12 @@ button{background:#ff9800;color:white;cursor:pointer;}
     background-size:360px 360px;
     transition:top 0.2s ease,left 0.2s ease;
     cursor:pointer;
+    font-weight:bold;
+    color:white;
+    text-shadow:1px 1px 2px black;
+    display:flex;
+    align-items:center;
+    justify-content:center;
 }
 .empty{background:none; cursor:default;}
 #leaderboard{
@@ -77,7 +83,7 @@ const scoresList=document.getElementById("scores")
 const canvas=document.getElementById("confetti")
 const ctx=canvas.getContext("2d")
 let confettiActive=false, confettiParticles=[]
-const imgSrc="IMG_2806.png"
+const imgSrc="IMG_2806.png"  // Dein Bild
 
 // Start Game
 function startGame(){
@@ -98,7 +104,7 @@ function startGame(){
     loadScores()
 }
 
-// Render Tiles with Image
+// Render Tiles mit Bild + Nummer
 function render(){
     puzzle.innerHTML=""
     const tileSize=Math.floor(360/size)
@@ -111,6 +117,8 @@ function render(){
             let row=Math.floor((num-1)/size)
             let col=(num-1)%size
             div.style.backgroundPosition=`-${col*tileSize}px -${row*tileSize}px`
+            div.textContent=num // Nummer über Bild
+            div.style.fontSize=Math.floor(tileSize/3)+"px"
         }
         let row=Math.floor(i/size), col=i%size
         div.style.width=tileSize+"px"
@@ -134,7 +142,7 @@ function move(i){
     }
 }
 
-// Shuffle
+// Shuffle (lösbar)
 function shuffleSolvable(){
     do{
         for(let i=tiles.length-1;i>0;i--){
@@ -184,7 +192,7 @@ function loadScores(){
     })
 }
 
-// Touch
+// Touchsteuerung
 let startX,startY
 puzzle.addEventListener("touchstart",e=>{startX=e.touches[0].clientX; startY=e.touches[0].clientY})
 puzzle.addEventListener("touchend",e=>{
@@ -202,10 +210,9 @@ puzzle.addEventListener("touchend",e=>{
     if(target>=0 && target<tiles.length) move(target)
 })
 
-// KI Solver (greedy image puzzle)
+// KI Solver (greedy Schritt-für-Schritt)
 function startSolver(){
     solverQueue=[]
-    // einfaches Ziel: jedes Tile an richtigen Platz
     for(let i=0;i<tiles.length-1;i++){
         if(tiles[i]!==i+1){
             let idx=tiles.indexOf(i+1)
