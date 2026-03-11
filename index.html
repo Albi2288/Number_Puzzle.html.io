@@ -2,331 +2,324 @@
 <html lang="de">
 <head>
 <meta charset="UTF-8">
-<title>Number Puzzle</title>
-
+<title>Number Puzzle Deluxe</title>
 <style>
-
 body{
-font-family:Arial, sans-serif;
-text-align:center;
-margin:0;
-background:linear-gradient(135deg,#4facfe,#00f2fe);
-color:white;
+    font-family:Arial, sans-serif;
+    text-align:center;
+    margin:0;
+    background:linear-gradient(135deg,#4facfe,#00f2fe);
+    color:white;
+    overflow-x:hidden;
 }
-
 h1{
-margin-top:20px;
+    margin-top:20px;
 }
-
 #controls{
-margin:15px;
+    margin:15px;
 }
-
 select,button{
-padding:8px 12px;
-border:none;
-border-radius:6px;
-font-size:14px;
+    padding:8px 12px;
+    border:none;
+    border-radius:6px;
+    font-size:14px;
+    margin:3px;
 }
-
 button{
-background:#ff9800;
-color:white;
-cursor:pointer;
+    background:#ff9800;
+    color:white;
+    cursor:pointer;
 }
-
 #puzzle{
-margin:20px auto;
-width:320px;
-height:320px;
-display:grid;
-gap:6px;
-touch-action:none;
+    margin:20px auto;
+    width:360px;
+    height:360px;
+    display:grid;
+    gap:6px;
+    touch-action:none;
+    position:relative;
 }
-
 .tile{
-display:flex;
-justify-content:center;
-align-items:center;
-font-size:22px;
-font-weight:bold;
-border-radius:10px;
-cursor:pointer;
-background:linear-gradient(145deg,#ffcc70,#ff8c00);
-box-shadow:0 4px 10px rgba(0,0,0,0.3);
-transition:transform .15s;
+    display:flex;
+    justify-content:center;
+    align-items:center;
+    font-size:22px;
+    font-weight:bold;
+    border-radius:10px;
+    cursor:pointer;
+    background:linear-gradient(145deg,#ffcc70,#ff8c00);
+    box-shadow:0 4px 10px rgba(0,0,0,0.3);
+    transition:all 0.2s ease;
+    position:absolute;
 }
-
-.tile:active{
-transform:scale(0.92);
-}
-
 .empty{
-background:transparent;
-box-shadow:none;
-cursor:default;
+    background:transparent;
+    box-shadow:none;
+    cursor:default;
 }
-
 #leaderboard{
-background:rgba(255,255,255,0.15);
-backdrop-filter:blur(8px);
-padding:10px;
-margin:20px auto;
-width:200px;
-border-radius:10px;
+    background:rgba(255,255,255,0.15);
+    backdrop-filter:blur(8px);
+    padding:10px;
+    margin:20px auto;
+    width:200px;
+    border-radius:10px;
 }
-
+canvas{
+    position:absolute;
+    top:0;
+    left:0;
+    pointer-events:none;
+}
 </style>
 </head>
-
 <body>
-
-<h1>🧩 Number Puzzle</h1>
-
+<h1>🧩 Number Puzzle Deluxe</h1>
 <div id="controls">
-
 Größe:
-
 <select id="sizeSelect">
 <option value="3">3x3</option>
 <option value="4" selected>4x4</option>
 <option value="5">5x5</option>
 <option value="6">6x6</option>
 </select>
-
 <button onclick="startGame()">Neu starten</button>
-
+<button onclick="startSolver()">🤖 Auto Solve</button>
 <p>⏱ Zeit: <span id="timer">0</span> s</p>
-
 </div>
-
 <div id="puzzle"></div>
-
+<canvas id="confetti"></canvas>
 <div id="leaderboard">
 <h3>🏆 Bestenliste</h3>
 <ul id="scores"></ul>
 </div>
 
 <script>
-
-let size=4
-let tiles=[]
-let timer=0
-let timerInterval
-
+// Grundvariablen
+let size=4, tiles=[], timer=0, timerInterval, solverMoves=[]
 const puzzle=document.getElementById("puzzle")
 const timerDisplay=document.getElementById("timer")
 const scoresList=document.getElementById("scores")
+const canvas=document.getElementById("confetti")
+const ctx=canvas.getContext("2d")
+let confettiActive=false, confettiParticles=[]
 
+// Start / Initialisierung
 function startGame(){
-
 size=parseInt(document.getElementById("sizeSelect").value)
-
 tiles=[]
-
 for(let i=1;i<size*size;i++) tiles.push(i)
 tiles.push("")
-
 puzzle.style.gridTemplateColumns=`repeat(${size},1fr)`
 puzzle.style.gridTemplateRows=`repeat(${size},1fr)`
-
 shuffleSolvable()
-
 timer=0
 timerDisplay.textContent=0
-
 clearInterval(timerInterval)
-
-timerInterval=setInterval(()=>{
-timer++
-timerDisplay.textContent=timer
-},1000)
-
+timerInterval=setInterval(()=>{timer++;timerDisplay.textContent=timer},1000)
 render()
 loadScores()
-
 }
 
+// Render Tiles
 function render(){
-
 puzzle.innerHTML=""
-
+const tileSize=Math.floor(360/size)
 tiles.forEach((num,i)=>{
-
 let div=document.createElement("div")
-
-if(num===""){
-div.className="tile empty"
-}else{
-div.className="tile"
+div.className=num===""?"tile empty":"tile"
 div.textContent=num
-div.onclick=()=>move(i)
-}
-
-puzzle.appendChild(div)
-
-})
-
-}
-
-function move(i){
-
-let empty=tiles.indexOf("")
-
+div.style.width=tileSize-6+"px"
+div.style.height=tileSize-6+"px"
 let row=Math.floor(i/size)
 let col=i%size
+div.style.top=row*tileSize+"px"
+div.style.left=col*tileSize+"px"
+if(num!=="") div.onclick=()=>move(i)
+puzzle.appendChild(div)
+})
+}
 
-let erow=Math.floor(empty/size)
-let ecol=empty%size
-
+// Bewegen eines Tiles
+function move(i){
+let empty=tiles.indexOf("")
+let row=Math.floor(i/size), col=i%size
+let erow=Math.floor(empty/size), ecol=empty%size
 if(Math.abs(row-erow)+Math.abs(col-ecol)===1){
-
 [tiles[i],tiles[empty]]=[tiles[empty],tiles[i]]
-
 render()
 checkWin()
-
+}
 }
 
-}
-
+// Puzzle mischen (lösbar)
 function shuffleSolvable(){
-
 do{
-
 for(let i=tiles.length-1;i>0;i--){
 let j=Math.floor(Math.random()*(i+1))
 ;[tiles[i],tiles[j]]=[tiles[j],tiles[i]]
 }
-
 }while(!isSolvable() || isSolved())
-
 }
 
-function isSolved(){
+// Prüfen ob gelöst
+function isSolved(){for(let i=0;i<tiles.length-1;i++) if(tiles[i]!==i+1) return false; return true}
 
-for(let i=0;i<tiles.length-1;i++){
-if(tiles[i]!==i+1) return false
-}
-
-return true
-
-}
-
+// Prüfen ob lösbar
 function isSolvable(){
-
 let inv=0
-
 for(let i=0;i<tiles.length;i++){
 for(let j=i+1;j<tiles.length;j++){
 if(tiles[i] && tiles[j] && tiles[i]>tiles[j]) inv++
-}
-}
-
-if(size%2===1){
-return inv%2===0
-}else{
-
+}}
+if(size%2===1) return inv%2===0
 let emptyRow=size-Math.floor(tiles.indexOf("")/size)
-
-if(emptyRow%2===0){
-return inv%2===1
-}else{
-return inv%2===0
+return (emptyRow%2===0)?inv%2===1:inv%2===0
 }
 
-}
-
-}
-
+// Gewinnprüfung
 function checkWin(){
-
-for(let i=0;i<tiles.length-1;i++){
-if(tiles[i]!==i+1) return
-}
-
+if(!isSolved()) return
 clearInterval(timerInterval)
-
 saveScore(timer)
-
-setTimeout(()=>{
-alert("🎉 Gewonnen! Zeit: "+timer+" Sekunden")
-loadScores()
-},100)
-
+startConfetti()
+setTimeout(()=>{alert("🎉 Gewonnen! Zeit: "+timer+" Sekunden"); loadScores()},300)
 }
 
+// Bestenliste
 function saveScore(time){
-
 let key="puzzle_"+size
-
 let scores=JSON.parse(localStorage.getItem(key))||[]
-
 scores.push(time)
-
 scores.sort((a,b)=>a-b)
-
 scores=scores.slice(0,5)
-
 localStorage.setItem(key,JSON.stringify(scores))
-
 }
-
 function loadScores(){
-
 let key="puzzle_"+size
-
 let scores=JSON.parse(localStorage.getItem(key))||[]
-
 scoresList.innerHTML=""
-
 scores.forEach((s,i)=>{
-
 let li=document.createElement("li")
-
 li.textContent=(i+1)+". "+s+" s"
-
 scoresList.appendChild(li)
-
 })
-
 }
 
-let startX,startY
+// KI Solver (A* Algorithmus)
+function startSolver(){
+solverMoves=aStarSolve([...tiles])
+if(solverMoves.length===0){alert("Puzzle ist schon gelöst!"); return;}
+stepSolver()
+}
+function stepSolver(){
+if(solverMoves.length===0) return
+let moveIndex=solverMoves.shift()
+move(moveIndex)
+setTimeout(stepSolver,200)
+}
 
+// Hilfsfunktionen für KI
+function aStarSolve(start){
+let goal=[]
+for(let i=1;i<size*size;i++) goal.push(i)
+goal.push("")
+let visited=new Set()
+let heap=[{state:start,path:[]}]
+
+function stateKey(arr){return arr.join(",")}
+function manhattan(state){
+let sum=0
+for(let i=0;i<state.length;i++){
+if(state[i]==="") continue
+let correct=state[i]-1
+let row=Math.floor(i/size), col=i%size
+let crow=Math.floor(correct/size), ccol=correct%size
+sum+=Math.abs(row-crow)+Math.abs(col-ccol)
+}
+return sum
+}
+while(heap.length>0){
+heap.sort((a,b)=>a.path.length+manhattan(a.state)-(b.path.length+manhattan(b.state)))
+let current=heap.shift()
+if(stateKey(current.state)===stateKey(goal)) return current.path
+let key=stateKey(current.state)
+if(visited.has(key)) continue
+visited.add(key)
+let empty=current.state.indexOf("")
+let row=Math.floor(empty/size), col=empty%size
+let neighbors=[-1,1,-size,size]
+for(let n of neighbors){
+let ni=empty+n
+let nr=row+Math.floor(n/-size), nc=col+n
+if(ni<0||ni>=size*size) continue
+if(Math.abs(Math.floor(ni/size)-row)+Math.abs(ni%size-col)!==1) continue
+let newState=[...current.state]
+[newState[empty],newState[ni]]=[newState[ni],newState[empty]]
+heap.push({state:newState,path:[...current.path,ni]})
+}}
+return []
+}
+
+// Touchsteuerung
+let startX,startY
 puzzle.addEventListener("touchstart",e=>{
 startX=e.touches[0].clientX
 startY=e.touches[0].clientY
 })
-
 puzzle.addEventListener("touchend",e=>{
-
 let dx=e.changedTouches[0].clientX-startX
 let dy=e.changedTouches[0].clientY-startY
-
 let empty=tiles.indexOf("")
-
 let target
-
 if(Math.abs(dx)>Math.abs(dy)){
-
 if(dx>30) target=empty-1
 else if(dx<-30) target=empty+1
-
 }else{
-
 if(dy>30) target=empty-size
 else if(dy<-30) target=empty+size
-
 }
-
 if(target>=0 && target<tiles.length) move(target)
-
 })
 
+// Konfetti
+function startConfetti(){
+canvas.width=window.innerWidth
+canvas.height=window.innerHeight
+confettiActive=true
+confettiParticles=[]
+for(let i=0;i<150;i++){
+confettiParticles.push({
+x:Math.random()*canvas.width,
+y:Math.random()*canvas.height-canvas.height,
+r:Math.random()*6+4,
+d:Math.random()*50+10,
+color:`hsl(${Math.random()*360},100%,50%)`,
+tilt:Math.random()*10-10,
+tiltAngleIncrement:Math.random()*0.1+0.05,
+tiltAngle:0
+})}
+requestAnimationFrame(drawConfetti)
+}
+function drawConfetti(){
+ctx.clearRect(0,0,canvas.width,canvas.height)
+confettiParticles.forEach(p=>{
+p.tiltAngle+=p.tiltAngleIncrement
+p.y+=Math.cos(p.d)+1+p.r/2
+p.x+=Math.sin(p.d)
+p.tilt=Math.sin(p.tiltAngle)*15
+ctx.beginPath()
+ctx.lineWidth=p.r
+ctx.strokeStyle=p.color
+ctx.moveTo(p.x+p.tilt+ p.r/2,p.y)
+ctx.lineTo(p.x+p.tilt,p.y+p.tilt+ p.r/2)
+ctx.stroke()
+})
+confettiParticles=confettiParticles.filter(p=>p.y<canvas.height+20)
+if(confettiActive && confettiParticles.length>0) requestAnimationFrame(drawConfetti)
+}
+
 startGame()
-
 </script>
-
 </body>
 </html>
