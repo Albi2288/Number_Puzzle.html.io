@@ -76,6 +76,7 @@ Größe:
 </div>
 
 <script>
+// Variablen
 let size=4, tiles=[], timer=0, timerInterval, solverQueue=[]
 const puzzle=document.getElementById("puzzle")
 const timerDisplay=document.getElementById("timer")
@@ -83,7 +84,7 @@ const scoresList=document.getElementById("scores")
 const canvas=document.getElementById("confetti")
 const ctx=canvas.getContext("2d")
 let confettiActive=false, confettiParticles=[]
-const imgSrc="IMG_2806.png"  // Dein Bild
+const imgSrc="IMG_2806.png"
 
 // Start Game
 function startGame(){
@@ -93,8 +94,6 @@ function startGame(){
     tiles.push("")
     puzzle.style.width="360px"
     puzzle.style.height="360px"
-    puzzle.style.gridTemplateColumns=`repeat(${size},1fr)`
-    puzzle.style.gridTemplateRows=`repeat(${size},1fr)`
     shuffleSolvable()
     timer=0
     timerDisplay.textContent=0
@@ -117,7 +116,7 @@ function render(){
             let row=Math.floor((num-1)/size)
             let col=(num-1)%size
             div.style.backgroundPosition=`-${col*tileSize}px -${row*tileSize}px`
-            div.textContent=num // Nummer über Bild
+            div.textContent=num
             div.style.fontSize=Math.floor(tileSize/3)+"px"
         }
         let row=Math.floor(i/size), col=i%size
@@ -210,7 +209,7 @@ puzzle.addEventListener("touchend",e=>{
     if(target>=0 && target<tiles.length) move(target)
 })
 
-// KI Solver (greedy Schritt-für-Schritt)
+// KI Solver (Schritt-für-Schritt)
 function startSolver(){
     solverQueue=[]
     for(let i=0;i<tiles.length-1;i++){
