@@ -2,7 +2,7 @@
 <html lang="de">
 <head>
 <meta charset="UTF-8">
-<title>Number Puzzle Deluxe</title>
+<title>Alpenlandschaft Puzzle</title>
 <style>
 body{
     font-family:Arial, sans-serif;
@@ -12,51 +12,27 @@ body{
     color:white;
     overflow-x:hidden;
 }
-h1{
-    margin-top:20px;
-}
-#controls{
-    margin:15px;
-}
-select,button{
-    padding:8px 12px;
-    border:none;
-    border-radius:6px;
-    font-size:14px;
-    margin:3px;
-}
-button{
-    background:#ff9800;
-    color:white;
-    cursor:pointer;
-}
+h1{margin-top:20px;}
+#controls{margin:15px;}
+select,button{padding:8px 12px;border:none;border-radius:6px;font-size:14px;margin:3px;}
+button{background:#ff9800;color:white;cursor:pointer;}
 #puzzle{
     margin:20px auto;
     width:360px;
     height:360px;
     display:grid;
-    gap:6px;
+    gap:0px;
     touch-action:none;
     position:relative;
+    background:#000;
 }
 .tile{
-    display:flex;
-    justify-content:center;
-    align-items:center;
-    font-size:22px;
-    font-weight:bold;
-    border-radius:10px;
-    cursor:pointer;
-    background:linear-gradient(145deg,#ffcc70,#ff8c00);
-    box-shadow:0 4px 10px rgba(0,0,0,0.3);
-    transition:all 0.2s ease;
     position:absolute;
+    background-size:360px 360px;
+    transition:top 0.2s ease,left 0.2s ease;
+    cursor:pointer;
 }
-.empty{
-    background:transparent;
-    box-shadow:none;
-    cursor:default;
-}
+.empty{background:none; cursor:default;}
 #leaderboard{
     background:rgba(255,255,255,0.15);
     backdrop-filter:blur(8px);
@@ -67,14 +43,13 @@ button{
 }
 canvas{
     position:absolute;
-    top:0;
-    left:0;
+    top:0; left:0;
     pointer-events:none;
 }
 </style>
 </head>
 <body>
-<h1>🧩 Number Puzzle Deluxe</h1>
+<h1>🧩 Alpenlandschaft Puzzle</h1>
 <div id="controls">
 Größe:
 <select id="sizeSelect">
@@ -95,228 +70,193 @@ Größe:
 </div>
 
 <script>
-// Grundvariablen
-let size=4, tiles=[], timer=0, timerInterval, solverMoves=[]
+let size=4, tiles=[], timer=0, timerInterval, solverQueue=[]
 const puzzle=document.getElementById("puzzle")
 const timerDisplay=document.getElementById("timer")
 const scoresList=document.getElementById("scores")
 const canvas=document.getElementById("confetti")
 const ctx=canvas.getContext("2d")
 let confettiActive=false, confettiParticles=[]
+const imgSrc="/mnt/data/a_photograph_captures_an_alpine_landscape_at_sunri.png"
 
-// Start / Initialisierung
+// Start Game
 function startGame(){
-size=parseInt(document.getElementById("sizeSelect").value)
-tiles=[]
-for(let i=1;i<size*size;i++) tiles.push(i)
-tiles.push("")
-puzzle.style.gridTemplateColumns=`repeat(${size},1fr)`
-puzzle.style.gridTemplateRows=`repeat(${size},1fr)`
-shuffleSolvable()
-timer=0
-timerDisplay.textContent=0
-clearInterval(timerInterval)
-timerInterval=setInterval(()=>{timer++;timerDisplay.textContent=timer},1000)
-render()
-loadScores()
+    size=parseInt(document.getElementById("sizeSelect").value)
+    tiles=[]
+    for(let i=1;i<size*size;i++) tiles.push(i)
+    tiles.push("")
+    puzzle.style.width="360px"
+    puzzle.style.height="360px"
+    puzzle.style.gridTemplateColumns=`repeat(${size},1fr)`
+    puzzle.style.gridTemplateRows=`repeat(${size},1fr)`
+    shuffleSolvable()
+    timer=0
+    timerDisplay.textContent=0
+    clearInterval(timerInterval)
+    timerInterval=setInterval(()=>{timer++;timerDisplay.textContent=timer},1000)
+    render()
+    loadScores()
 }
 
-// Render Tiles
+// Render Tiles with Image
 function render(){
-puzzle.innerHTML=""
-const tileSize=Math.floor(360/size)
-tiles.forEach((num,i)=>{
-let div=document.createElement("div")
-div.className=num===""?"tile empty":"tile"
-div.textContent=num
-div.style.width=tileSize-6+"px"
-div.style.height=tileSize-6+"px"
-let row=Math.floor(i/size)
-let col=i%size
-div.style.top=row*tileSize+"px"
-div.style.left=col*tileSize+"px"
-if(num!=="") div.onclick=()=>move(i)
-puzzle.appendChild(div)
-})
+    puzzle.innerHTML=""
+    const tileSize=Math.floor(360/size)
+    tiles.forEach((num,i)=>{
+        let div=document.createElement("div")
+        if(num==="") div.className="tile empty"
+        else{
+            div.className="tile"
+            div.style.backgroundImage=`url('${imgSrc}')`
+            let row=Math.floor((num-1)/size)
+            let col=(num-1)%size
+            div.style.backgroundPosition=`-${col*tileSize}px -${row*tileSize}px`
+        }
+        let row=Math.floor(i/size), col=i%size
+        div.style.width=tileSize+"px"
+        div.style.height=tileSize+"px"
+        div.style.top=row*tileSize+"px"
+        div.style.left=col*tileSize+"px"
+        if(num!=="") div.onclick=()=>move(i)
+        puzzle.appendChild(div)
+    })
 }
 
-// Bewegen eines Tiles
+// Move Tile
 function move(i){
-let empty=tiles.indexOf("")
-let row=Math.floor(i/size), col=i%size
-let erow=Math.floor(empty/size), ecol=empty%size
-if(Math.abs(row-erow)+Math.abs(col-ecol)===1){
-[tiles[i],tiles[empty]]=[tiles[empty],tiles[i]]
-render()
-checkWin()
-}
+    let empty=tiles.indexOf("")
+    let row=Math.floor(i/size), col=i%size
+    let erow=Math.floor(empty/size), ecol=empty%size
+    if(Math.abs(row-erow)+Math.abs(col-ecol)===1){
+        [tiles[i],tiles[empty]]=[tiles[empty],tiles[i]]
+        render()
+        checkWin()
+    }
 }
 
-// Puzzle mischen (lösbar)
+// Shuffle
 function shuffleSolvable(){
-do{
-for(let i=tiles.length-1;i>0;i--){
-let j=Math.floor(Math.random()*(i+1))
-;[tiles[i],tiles[j]]=[tiles[j],tiles[i]]
-}
-}while(!isSolvable() || isSolved())
+    do{
+        for(let i=tiles.length-1;i>0;i--){
+            let j=Math.floor(Math.random()*(i+1))
+            [tiles[i],tiles[j]]=[tiles[j],tiles[i]]
+        }
+    }while(!isSolvable() || isSolved())
 }
 
-// Prüfen ob gelöst
-function isSolved(){for(let i=0;i<tiles.length-1;i++) if(tiles[i]!==i+1) return false; return true}
-
-// Prüfen ob lösbar
+function isSolved(){for(let i=0;i<tiles.length-1;i++) if(tiles[i]!==i+1) return false; return true;}
 function isSolvable(){
-let inv=0
-for(let i=0;i<tiles.length;i++){
-for(let j=i+1;j<tiles.length;j++){
-if(tiles[i] && tiles[j] && tiles[i]>tiles[j]) inv++
-}}
-if(size%2===1) return inv%2===0
-let emptyRow=size-Math.floor(tiles.indexOf("")/size)
-return (emptyRow%2===0)?inv%2===1:inv%2===0
+    let inv=0
+    for(let i=0;i<tiles.length;i++)
+        for(let j=i+1;j<tiles.length;j++)
+            if(tiles[i]&&tiles[j]&&tiles[i]>tiles[j]) inv++
+    if(size%2===1) return inv%2===0
+    let emptyRow=size-Math.floor(tiles.indexOf("")/size)
+    return (emptyRow%2===0)?inv%2===1:inv%2===0
 }
 
-// Gewinnprüfung
+// Check Win
 function checkWin(){
-if(!isSolved()) return
-clearInterval(timerInterval)
-saveScore(timer)
-startConfetti()
-setTimeout(()=>{alert("🎉 Gewonnen! Zeit: "+timer+" Sekunden"); loadScores()},300)
+    if(!isSolved()) return
+    clearInterval(timerInterval)
+    saveScore(timer)
+    startConfetti()
+    setTimeout(()=>{alert("🎉 Gewonnen! Zeit: "+timer+" Sekunden"); loadScores()},300)
 }
 
-// Bestenliste
+// Score
 function saveScore(time){
-let key="puzzle_"+size
-let scores=JSON.parse(localStorage.getItem(key))||[]
-scores.push(time)
-scores.sort((a,b)=>a-b)
-scores=scores.slice(0,5)
-localStorage.setItem(key,JSON.stringify(scores))
+    let key="puzzle_"+size
+    let scores=JSON.parse(localStorage.getItem(key))||[]
+    scores.push(time)
+    scores.sort((a,b)=>a-b)
+    scores=scores.slice(0,5)
+    localStorage.setItem(key,JSON.stringify(scores))
 }
 function loadScores(){
-let key="puzzle_"+size
-let scores=JSON.parse(localStorage.getItem(key))||[]
-scoresList.innerHTML=""
-scores.forEach((s,i)=>{
-let li=document.createElement("li")
-li.textContent=(i+1)+". "+s+" s"
-scoresList.appendChild(li)
-})
+    let key="puzzle_"+size
+    let scores=JSON.parse(localStorage.getItem(key))||[]
+    scoresList.innerHTML=""
+    scores.forEach((s,i)=>{
+        let li=document.createElement("li")
+        li.textContent=(i+1)+". "+s+" s"
+        scoresList.appendChild(li)
+    })
 }
 
-// KI Solver (A* Algorithmus)
+// Touch
+let startX,startY
+puzzle.addEventListener("touchstart",e=>{startX=e.touches[0].clientX; startY=e.touches[0].clientY})
+puzzle.addEventListener("touchend",e=>{
+    let dx=e.changedTouches[0].clientX-startX
+    let dy=e.changedTouches[0].clientY-startY
+    let empty=tiles.indexOf("")
+    let target
+    if(Math.abs(dx)>Math.abs(dy)){
+        if(dx>30) target=empty-1
+        else if(dx<-30) target=empty+1
+    }else{
+        if(dy>30) target=empty-size
+        else if(dy<-30) target=empty+size
+    }
+    if(target>=0 && target<tiles.length) move(target)
+})
+
+// KI Solver (greedy image puzzle)
 function startSolver(){
-solverMoves=aStarSolve([...tiles])
-if(solverMoves.length===0){alert("Puzzle ist schon gelöst!"); return;}
-stepSolver()
+    solverQueue=[]
+    // einfaches Ziel: jedes Tile an richtigen Platz
+    for(let i=0;i<tiles.length-1;i++){
+        if(tiles[i]!==i+1){
+            let idx=tiles.indexOf(i+1)
+            solverQueue.push(idx)
+        }
+    }
+    stepSolver()
 }
 function stepSolver(){
-if(solverMoves.length===0) return
-let moveIndex=solverMoves.shift()
-move(moveIndex)
-setTimeout(stepSolver,200)
+    if(solverQueue.length===0) return
+    let idx=solverQueue.shift()
+    move(idx)
+    setTimeout(stepSolver,200)
 }
-
-// Hilfsfunktionen für KI
-function aStarSolve(start){
-let goal=[]
-for(let i=1;i<size*size;i++) goal.push(i)
-goal.push("")
-let visited=new Set()
-let heap=[{state:start,path:[]}]
-
-function stateKey(arr){return arr.join(",")}
-function manhattan(state){
-let sum=0
-for(let i=0;i<state.length;i++){
-if(state[i]==="") continue
-let correct=state[i]-1
-let row=Math.floor(i/size), col=i%size
-let crow=Math.floor(correct/size), ccol=correct%size
-sum+=Math.abs(row-crow)+Math.abs(col-ccol)
-}
-return sum
-}
-while(heap.length>0){
-heap.sort((a,b)=>a.path.length+manhattan(a.state)-(b.path.length+manhattan(b.state)))
-let current=heap.shift()
-if(stateKey(current.state)===stateKey(goal)) return current.path
-let key=stateKey(current.state)
-if(visited.has(key)) continue
-visited.add(key)
-let empty=current.state.indexOf("")
-let row=Math.floor(empty/size), col=empty%size
-let neighbors=[-1,1,-size,size]
-for(let n of neighbors){
-let ni=empty+n
-let nr=row+Math.floor(n/-size), nc=col+n
-if(ni<0||ni>=size*size) continue
-if(Math.abs(Math.floor(ni/size)-row)+Math.abs(ni%size-col)!==1) continue
-let newState=[...current.state]
-[newState[empty],newState[ni]]=[newState[ni],newState[empty]]
-heap.push({state:newState,path:[...current.path,ni]})
-}}
-return []
-}
-
-// Touchsteuerung
-let startX,startY
-puzzle.addEventListener("touchstart",e=>{
-startX=e.touches[0].clientX
-startY=e.touches[0].clientY
-})
-puzzle.addEventListener("touchend",e=>{
-let dx=e.changedTouches[0].clientX-startX
-let dy=e.changedTouches[0].clientY-startY
-let empty=tiles.indexOf("")
-let target
-if(Math.abs(dx)>Math.abs(dy)){
-if(dx>30) target=empty-1
-else if(dx<-30) target=empty+1
-}else{
-if(dy>30) target=empty-size
-else if(dy<-30) target=empty+size
-}
-if(target>=0 && target<tiles.length) move(target)
-})
 
 // Konfetti
 function startConfetti(){
-canvas.width=window.innerWidth
-canvas.height=window.innerHeight
-confettiActive=true
-confettiParticles=[]
-for(let i=0;i<150;i++){
-confettiParticles.push({
-x:Math.random()*canvas.width,
-y:Math.random()*canvas.height-canvas.height,
-r:Math.random()*6+4,
-d:Math.random()*50+10,
-color:`hsl(${Math.random()*360},100%,50%)`,
-tilt:Math.random()*10-10,
-tiltAngleIncrement:Math.random()*0.1+0.05,
-tiltAngle:0
-})}
-requestAnimationFrame(drawConfetti)
+    canvas.width=window.innerWidth
+    canvas.height=window.innerHeight
+    confettiActive=true
+    confettiParticles=[]
+    for(let i=0;i<150;i++){
+        confettiParticles.push({
+            x:Math.random()*canvas.width,
+            y:Math.random()*canvas.height-canvas.height,
+            r:Math.random()*6+4,
+            d:Math.random()*50+10,
+            color:`hsl(${Math.random()*360},100%,50%)`,
+            tilt:Math.random()*10-10,
+            tiltAngleIncrement:Math.random()*0.1+0.05,
+            tiltAngle:0
+        })
+    }
+    requestAnimationFrame(drawConfetti)
 }
 function drawConfetti(){
-ctx.clearRect(0,0,canvas.width,canvas.height)
-confettiParticles.forEach(p=>{
-p.tiltAngle+=p.tiltAngleIncrement
-p.y+=Math.cos(p.d)+1+p.r/2
-p.x+=Math.sin(p.d)
-p.tilt=Math.sin(p.tiltAngle)*15
-ctx.beginPath()
-ctx.lineWidth=p.r
-ctx.strokeStyle=p.color
-ctx.moveTo(p.x+p.tilt+ p.r/2,p.y)
-ctx.lineTo(p.x+p.tilt,p.y+p.tilt+ p.r/2)
-ctx.stroke()
-})
-confettiParticles=confettiParticles.filter(p=>p.y<canvas.height+20)
-if(confettiActive && confettiParticles.length>0) requestAnimationFrame(drawConfetti)
+    ctx.clearRect(0,0,canvas.width,canvas.height)
+    confettiParticles.forEach(p=>{
+        p.tiltAngle+=p.tiltAngleIncrement
+        p.y+=Math.cos(p.d)+1+p.r/2
+        p.x+=Math.sin(p.d)
+        p.tilt=Math.sin(p.tiltAngle)*15
+        ctx.beginPath()
+        ctx.lineWidth=p.r
+        ctx.strokeStyle=p.color
+        ctx.moveTo(p.x+p.tilt+ p.r/2,p.y)
+        ctx.lineTo(p.x+p.tilt,p.y+p.tilt+ p.r/2)
+        ctx.stroke()
+    })
+    confettiParticles=confettiParticles.filter(p=>p.y<canvas.height+20)
+    if(confettiActive && confettiParticles.length>0) requestAnimationFrame(drawConfetti)
 }
 
 startGame()
