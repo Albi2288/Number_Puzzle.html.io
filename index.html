@@ -2,21 +2,19 @@
 <html lang="de">
 <head>
 <meta charset="UTF-8">
-<title>Ressourcenschonendes Bild-Puzzle</title>
+<title>Canvas-Bild-Puzzle</title>
 <style>
 body{font-family:Arial;text-align:center;background:linear-gradient(135deg,#4facfe,#00f2fe);color:white;margin:0;}
 #controls{margin:20px;}
 button,select,input{padding:8px;font-size:16px;margin:5px;border:none;border-radius:6px;}
 button{background:#ff9800;color:white;cursor:pointer;}
-#puzzle{position:relative;width:360px;height:360px;margin:auto;background:black;touch-action:none;}
-.tile{position:absolute;display:flex;align-items:center;justify-content:center;font-weight:bold;color:white;text-shadow:1px 1px 3px black;background-size:360px 360px;transition:transform .2s ease;-webkit-tap-highlight-color:transparent;user-select:none;touch-action:none;}
-.empty{display:none;}
-canvas{position:fixed;top:0;left:0;pointer-events:none;}
+canvas#puzzleCanvas{background:black;display:block;margin:auto;touch-action:none;}
+canvas#confetti{position:fixed;top:0;left:0;pointer-events:none;}
 #leaderboard{background:rgba(255,255,255,0.15);backdrop-filter:blur(6px);padding:10px;margin:10px auto;width:220px;border-radius:10px;text-align:left;}
 </style>
 </head>
 <body>
-<h1>🧩 Ressourcenschonendes Bild-Puzzle</h1>
+<h1>🧩 Canvas-Bild-Puzzle</h1>
 <div id="controls">
 Größe:<select id="size"><option value="3">3x3</option><option value="4" selected>4x4</option><option value="5">5x5</option><option value="6">6x6</option></select>
 <button onclick="startGame()">Neu starten</button>
@@ -24,119 +22,100 @@ Größe:<select id="size"><option value="3">3x3</option><option value="4" select
 Bild hochladen:<input type="file" id="imgUpload" accept="image/*">
 <p>⏱ Zeit: <span id="timer">0</span></p>
 </div>
-<div id="puzzle"></div>
+<canvas id="puzzleCanvas" width="360" height="360"></canvas>
 <canvas id="confetti"></canvas>
 <div id="leaderboard">
 <h3>🏆 Bestenliste</h3>
 <ul id="scores"></ul>
 </div>
 <script>
-let size, tiles=[], tileElements=[], emptyIndex, imgSrc="IMG_2806.png";
-let timer=0, timerInterval;
-let puzzle=document.getElementById("puzzle"), timerText=document.getElementById("timer"), leaderboard=document.getElementById("scores"), canvas=document.getElementById("confetti"), ctx=canvas.getContext("2d"), particles=[];
+const canvas=document.getElementById("puzzleCanvas"), ctx=canvas.getContext("2d"), confetti=document.getElementById("confetti"), cctx=confetti.getContext("2d");
+const timerText=document.getElementById("timer"), leaderboard=document.getElementById("scores"), sizeSelect=document.getElementById("size"), imgUpload=document.getElementById("imgUpload");
+let img=new Image(), size=4, tiles=[], emptyIndex, tileSize=360/size, timer=0, timerInterval, particles=[];
 
-// Bild Upload
-document.getElementById("imgUpload").addEventListener("change", e=>{
-  let file = e.target.files[0];
+img.src="IMG_2806.png";
+img.onload=()=>{startGame();};
+
+imgUpload.addEventListener("change",e=>{
+  const file=e.target.files[0];
   if(file){
-    let reader = new FileReader();
-    reader.onload = ev => { imgSrc = ev.target.result; createTiles(); };
+    const reader=new FileReader();
+    reader.onload=ev=>{ img.src=ev.target.result; };
     reader.readAsDataURL(file);
   }
 });
 
 function startGame(){
-  size=parseInt(document.getElementById("size").value);
+  size=parseInt(sizeSelect.value);
+  tileSize=360/size;
   tiles=[];
   for(let i=1;i<size*size;i++) tiles.push(i);
   tiles.push("");
   emptyIndex=tiles.length-1;
   shuffle();
-  timer=0; timerText.innerText=0;
+  timer=0; timerText.innerText=timer;
   clearInterval(timerInterval);
   timerInterval=setInterval(()=>{timer++; timerText.innerText=timer;},1000);
-  createTiles();
+  drawBoard();
   loadScores();
 }
 
 function shuffle(){
   for(let i=0;i<200;i++){
-    let row=Math.floor(emptyIndex/size), col=emptyIndex%size, moves=[];
-    if(row>0)moves.push(emptyIndex-size);
-    if(row<size-1)moves.push(emptyIndex+size);
-    if(col>0)moves.push(emptyIndex-1);
-    if(col<size-1)moves.push(emptyIndex+1);
-    let target=moves[Math.floor(Math.random()*moves.length)];
+    const row=Math.floor(emptyIndex/size), col=emptyIndex%size, moves=[];
+    if(row>0) moves.push(emptyIndex-size);
+    if(row<size-1) moves.push(emptyIndex+size);
+    if(col>0) moves.push(emptyIndex-1);
+    if(col<size-1) moves.push(emptyIndex+1);
+    const target=moves[Math.floor(Math.random()*moves.length)];
     swap(target);
   }
 }
 
 function swap(i){
-  tiles[emptyIndex] = tiles[i];
-  tiles[i] = "";
-  emptyIndex = i;
+  tiles[emptyIndex]=tiles[i];
+  tiles[i]="";
+  emptyIndex=i;
 }
 
-function createTiles(){
-  puzzle.innerHTML = "";
-  tileElements = [];
-  let tileSize = 360/size;
+function drawBoard(){
+  ctx.clearRect(0,0,360,360);
   for(let i=0;i<tiles.length;i++){
-    let value = tiles[i];
-    let tile = document.createElement("div");
-    tile.className = "tile";
-    tile.style.width = tileSize+"px";
-    tile.style.height = tileSize+"px";
-    if(value === "") tile.classList.add("empty");
-    else{
-      tile.innerText = value;
-      tile.style.fontSize = (tileSize/3)+"px";
-      let imgRow=Math.floor((value-1)/size), imgCol=(value-1)%size;
-      tile.style.backgroundImage="url("+imgSrc+")";
-      tile.style.backgroundPosition=(-imgCol*tileSize)+"px "+(-imgRow*tileSize)+"px";
-      tile.addEventListener("pointerdown", ()=> moveTile(i));
-    }
-    puzzle.appendChild(tile);
-    tileElements.push(tile);
+    if(tiles[i]==="") continue;
+    const row=Math.floor(i/size), col=i%size;
+    const val=tiles[i]-1;
+    const srcRow=Math.floor(val/size), srcCol=val%size;
+    ctx.drawImage(img, srcCol*tileSize, srcRow*tileSize, tileSize, tileSize, col*tileSize, row*tileSize, tileSize, tileSize);
+    ctx.fillStyle="white"; ctx.font=`${tileSize/3}px Arial`; ctx.textAlign="center"; ctx.textBaseline="middle";
+    ctx.fillText(tiles[i], col*tileSize+tileSize/2, row*tileSize+tileSize/2);
   }
-  updatePositions();
 }
 
-function updatePositions(){
-  let tileSize = 360/size;
-  for(let i=0;i<tiles.length;i++){
-    let row=Math.floor(i/size), col=i%size;
-    tileElements[i].style.transform = `translate(${col*tileSize}px, ${row*tileSize}px)`;
-  }
-}
+canvas.addEventListener("pointerdown",e=>{
+  const rect=canvas.getBoundingClientRect();
+  const x=Math.floor((e.clientX-rect.left)/tileSize);
+  const y=Math.floor((e.clientY-rect.top)/tileSize);
+  const index=y*size+x;
+  moveTile(index);
+});
 
 function moveTile(index){
-  let row=Math.floor(index/size), col=index%size;
-  let erow=Math.floor(emptyIndex/size), ecol=emptyIndex%size;
-  if(row === erow && Math.abs(col-ecol) === 1){ swap(index); updatePositions(); checkWin(); }
-  else if(col === ecol && Math.abs(row-erow) === 1){ swap(index); updatePositions(); checkWin(); }
+  const row=Math.floor(index/size), col=index%size;
+  const erow=Math.floor(emptyIndex/size), ecol=emptyIndex%size;
+  if(row===erow && Math.abs(col-ecol)===1 || col===ecol && Math.abs(row-erow)===1){
+    swap(index);
+    drawBoard();
+    checkWin();
+  }
 }
 
-// Konfetti
-function startConfetti(){
-  canvas.width=window.innerWidth; canvas.height=window.innerHeight; particles=[];
-  for(let i=0;i<150;i++) particles.push({x:Math.random()*canvas.width,y:Math.random()*canvas.height-canvas.height,size:Math.random()*8+4,speed:Math.random()*3+2,color:`hsl(${Math.random()*360},100%,50%)`});
-  animateConfetti();
-}
-function animateConfetti(){
-  ctx.clearRect(0,0,canvas.width,canvas.height);
-  particles.forEach(p=>{p.y+=p.speed; ctx.fillStyle=p.color; ctx.fillRect(p.x,p.y,p.size,p.size);});
-  particles=particles.filter(p=>p.y<canvas.height);
-  if(particles.length>0) requestAnimationFrame(animateConfetti);
-}
-
-// Check Win & Bestenliste
 function checkWin(){
   for(let i=0;i<tiles.length-1;i++) if(tiles[i]!==i+1) return;
   clearInterval(timerInterval); startConfetti();
   let name=prompt("🎉 Gewonnen! Name:"); if(!name) name="Spieler";
   saveScore(name,timer); loadScores();
 }
+
 function saveScore(name,time){
   let key="puzzle_"+size; let scores=JSON.parse(localStorage.getItem(key))||[];
   scores.push({name,time}); scores.sort((a,b)=>a.time-b.time); scores=scores.slice(0,5);
@@ -144,10 +123,20 @@ function saveScore(name,time){
 }
 function loadScores(){
   let key="puzzle_"+size; let scores=JSON.parse(localStorage.getItem(key))||[]; leaderboard.innerHTML="";
-  scores.forEach((s,i)=>{let li=document.createElement("li"); li.textContent=`${i+1}. ${s.name}: ${s.time}s`; leaderboard.appendChild(li);});
+  scores.forEach((s,i)=>{ let li=document.createElement("li"); li.textContent=`${i+1}. ${s.name}: ${s.time}s`; leaderboard.appendChild(li); });
 }
 
-startGame();
+function startConfetti(){
+  confetti.width=window.innerWidth; confetti.height=window.innerHeight; particles=[];
+  for(let i=0;i<150;i++) particles.push({x:Math.random()*confetti.width, y:Math.random()*confetti.height-confetti.height, size:Math.random()*8+4, speed:Math.random()*3+2, color:`hsl(${Math.random()*360},100%,50%)`});
+  animateConfetti();
+}
+function animateConfetti(){
+  cctx.clearRect(0,0,confetti.width,confetti.height);
+  particles.forEach(p=>{p.y+=p.speed; cctx.fillStyle=p.color; cctx.fillRect(p.x,p.y,p.size,p.size);});
+  particles=particles.filter(p=>p.y<confetti.height);
+  if(particles.length>0) requestAnimationFrame(animateConfetti);
+}
 </script>
 </body>
 </html>
