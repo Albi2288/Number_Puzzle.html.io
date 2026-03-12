@@ -298,19 +298,12 @@ alert("🎉 Puzzle gelöst! Zeit: "+timer+" Sekunden")
 }
 
 
-
 let startX,startY
 
-
-
 puzzle.addEventListener("touchstart",e=>{
-
 startX=e.touches[0].clientX
 startY=e.touches[0].clientY
-
 })
-
-
 
 puzzle.addEventListener("touchend",e=>{
 
@@ -334,12 +327,12 @@ else if(dy<-30) target=empty+size
 }
 
 if(target>=0 && target<tiles.length){
-
 move(target)
-
 }
 
 })
+
+
 
 
 
