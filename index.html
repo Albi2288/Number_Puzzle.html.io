@@ -136,17 +136,32 @@ draw()
 
 function shuffle(){
 
-for(let i=tiles.length-1;i>0;i--){
+let moves = 200
 
-let j=Math.floor(Math.random()*(i+1))
+for(let i=0;i<moves;i++){
 
-let temp=tiles[i]
-tiles[i]=tiles[j]
-tiles[j]=temp
+let empty=tiles.indexOf("")
+
+let possible=[]
+
+let row=Math.floor(empty/size)
+let col=empty%size
+
+if(row>0) possible.push(empty-size)
+if(row<size-1) possible.push(empty+size)
+if(col>0) possible.push(empty-1)
+if(col<size-1) possible.push(empty+1)
+
+let target=possible[Math.floor(Math.random()*possible.length)]
+
+let temp=tiles[target]
+tiles[target]=tiles[empty]
+tiles[empty]=temp
 
 }
 
 }
+
 
 
 
