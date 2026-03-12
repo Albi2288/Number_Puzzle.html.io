@@ -219,31 +219,63 @@ puzzle.appendChild(div)
 
 
 
-function move(i){
+function move(index){
 
-let empty=tiles.indexOf("")
+let empty = tiles.indexOf("")
 
-let row=Math.floor(i/size)
-let col=i%size
+let row = Math.floor(index/size)
+let col = index%size
 
-let erow=Math.floor(empty/size)
-let ecol=empty%size
+let erow = Math.floor(empty/size)
+let ecol = empty%size
 
-let dist=Math.abs(row-erow)+Math.abs(col-ecol)
+// gleiche Reihe
+if(row === erow){
 
-if(dist===1){
+let step = col > ecol ? -1 : 1
 
-let temp=tiles[i]
-tiles[i]=tiles[empty]
-tiles[empty]=temp
+for(let c = ecol + step; step === 1 ? c <= col : c >= col; c += step){
+
+let i = row*size + c
+let prev = row*size + (c-step)
+
+tiles[prev] = tiles[i]
+
+}
+
+tiles[row*size + col] = ""
+
+}
+
+// gleiche Spalte
+else if(col === ecol){
+
+let step = row > erow ? -1 : 1
+
+for(let r = erow + step; step === 1 ? r <= row : r >= row; r += step){
+
+let i = r*size + col
+let prev = (r-step)*size + col
+
+tiles[prev] = tiles[i]
+
+}
+
+tiles[row*size + col] = ""
+
+}
+
+else{
+
+return
+
+}
 
 draw()
-
 checkWin()
 
 }
 
-}
 
 
 
@@ -371,6 +403,23 @@ requestAnimationFrame(animateConfetti)
 
 }
 
+let dragStartIndex=null
+
+puzzle.addEventListener("mousedown",e=>{
+let tile=e.target
+if(!tile.classList.contains("tile")) return
+dragStartIndex=[...puzzle.children].indexOf(tile)
+})
+
+puzzle.addEventListener("mouseup",e=>{
+let tile=e.target
+if(!tile.classList.contains("tile")) return
+let endIndex=[...puzzle.children].indexOf(tile)
+
+move(endIndex)
+
+dragStartIndex=null
+})
 
 
 startGame()
