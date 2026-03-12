@@ -48,7 +48,37 @@ function createTiles(){puzzle.innerHTML="";tileElements=[];let tileSize=360/size
 
 function updatePositions(){let tileSize=360/size;for(let i=0;i<tiles.length;i++){let row=Math.floor(i/size),col=i%size;tileElements[i].style.transform="translate("+(col*tileSize)+"px,"+(row*tileSize)+"px)";}}
 
-function move(index){let row=Math.floor(index/size),col=index%size,erow=Math.floor(emptyIndex/size),ecol=emptyIndex%size;if(row===erow || col===ecol){while(index!==emptyIndex){let next;if(row===erow){next=index+(ecol>col?1:-1);}else{next=index+(erow>row?size:-size);}tiles[emptyIndex]=tiles[next];tiles[next]="";emptyIndex=next;}updatePositions();checkWin();}}
+function move(index){
+    let row=Math.floor(index/size), col=index%size;
+    let erow=Math.floor(emptyIndex/size), ecol=emptyIndex%size;
+
+    if(row===erow){
+        let step = col>ecol?-1:1;
+        let c = col;
+        while(c!==ecol){
+            let i = row*size + c;
+            let next = row*size + (c - step);
+            tiles[emptyIndex] = tiles[i];
+            tiles[i]="";
+            emptyIndex = i;
+            c -= step;
+        }
+    } else if(col===ecol){
+        let step = row>erow?-1:1;
+        let r = row;
+        while(r!==erow){
+            let i = r*size + col;
+            let next = (r - step)*size + col;
+            tiles[emptyIndex] = tiles[i];
+            tiles[i]="";
+            emptyIndex = i;
+            r -= step;
+        }
+    } else return;
+
+    updatePositions();
+    checkWin();
+}
 
 // Konfetti
 function startConfetti(){canvas.width=window.innerWidth;canvas.height=window.innerHeight;particles=[];for(let i=0;i<150;i++){particles.push({x:Math.random()*canvas.width,y:Math.random()*canvas.height-canvas.height,size:Math.random()*8+4,speed:Math.random()*3+2,color:`hsl(${Math.random()*360},100%,50%)`});}animateConfetti();}
