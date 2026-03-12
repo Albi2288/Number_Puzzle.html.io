@@ -2,7 +2,7 @@
 <html lang="de">
 <head>
 <meta charset="UTF-8">
-<title>Canvas-Bild-Puzzle</title>
+<title>Canvas-Bild-Puzzle Korrekt skaliert</title>
 <style>
 body{font-family:Arial;text-align:center;background:linear-gradient(135deg,#4facfe,#00f2fe);color:white;margin:0;}
 #controls{margin:20px;}
@@ -80,12 +80,14 @@ function swap(i){
 
 function drawBoard(){
   ctx.clearRect(0,0,360,360);
+  const imgTileWidth = img.width/size;
+  const imgTileHeight = img.height/size;
   for(let i=0;i<tiles.length;i++){
     if(tiles[i]==="") continue;
     const row=Math.floor(i/size), col=i%size;
     const val=tiles[i]-1;
     const srcRow=Math.floor(val/size), srcCol=val%size;
-    ctx.drawImage(img, srcCol*tileSize, srcRow*tileSize, tileSize, tileSize, col*tileSize, row*tileSize, tileSize, tileSize);
+    ctx.drawImage(img, srcCol*imgTileWidth, srcRow*imgTileHeight, imgTileWidth, imgTileHeight, col*tileSize, row*tileSize, tileSize, tileSize);
     ctx.fillStyle="white"; ctx.font=`${tileSize/3}px Arial`; ctx.textAlign="center"; ctx.textBaseline="middle";
     ctx.fillText(tiles[i], col*tileSize+tileSize/2, row*tileSize+tileSize/2);
   }
