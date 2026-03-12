@@ -54,7 +54,7 @@ transition:0.25s;
 background-color:transparent;
 -webkit-tap-highlight-color:transparent;
 user-select:none;
-touch-action:manipulation;
+touch-action:none;
 }
 
 .empty{
@@ -248,7 +248,7 @@ div.style.backgroundImage="url("+imgSrc+")"
 div.style.backgroundPosition=
 (-imgCol*tileSize)+"px "+(-imgRow*tileSize)+"px"
 
-div.onclick=()=>move(i)
+div.addEventListener("pointerdown",()=>move(i))
 
 }
 
@@ -340,7 +340,7 @@ else if(dy<-30) target=empty+size
 
 }
 
-if(target>=0&&target<tiles.length) move(target)
+if(target>=0 && target<tiles.length) move(target)
 
 })
 
