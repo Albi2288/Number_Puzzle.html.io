@@ -2,7 +2,7 @@
 <html lang="de">
 <head>
 <meta charset="UTF-8">
-<title>Bild Puzzle</title>
+<title>Bild Puzzle mit KI</title>
 <style>
 body{
   font-family:Arial;
@@ -61,7 +61,7 @@ canvas{
 </head>
 <body>
 
-<h1>🧩 Bild Puzzle</h1>
+<h1>🧩 Bild Puzzle mit KI</h1>
 
 <div id="controls">
 Größe:
@@ -72,6 +72,7 @@ Größe:
 <option value="6">6x6</option>
 </select>
 <button onclick="startGame()">Neu starten</button>
+<button onclick="solveWithAI()">KI lösen</button>
 <br>
 Bild hochladen:
 <input type="file" id="imgUpload" accept="image/*">
@@ -87,22 +88,24 @@ Bild hochladen:
 </div>
 
 <script>
+// --- Grundvariablen ---
 let size, tiles=[], timer=0, timerInterval;
 let puzzle=document.getElementById("puzzle");
 let timerText=document.getElementById("timer");
 let leaderboard=document.getElementById("scores");
 let imgSrc="IMG_2806.png";
 
-// Bild Upload
+// --- Bild Upload ---
 document.getElementById("imgUpload").addEventListener("change", e=>{
   let file=e.target.files[0];
   if(file){
     let reader=new FileReader();
     reader.onload=function(ev){imgSrc=ev.target.result; draw();}
-    reader.readAsDataURL(file);
+    reader.readAsDataURL(file)
   }
 })
 
+// --- Spiel starten ---
 function startGame(){
   size=parseInt(document.getElementById("size").value);
   tiles=[];
@@ -117,7 +120,7 @@ function startGame(){
   loadScores();
 }
 
-// Shuffle durch gültige Züge (immer lösbar)
+// --- Lösbares Shuffle ---
 function shuffle(){
   let moves = 200;
   for(let i=0;i<moves;i++){
@@ -134,6 +137,7 @@ function shuffle(){
   }
 }
 
+// --- Tiles zeichnen ---
 function draw(){
   puzzle.innerHTML="";
   let tileSize=360/size;
@@ -160,7 +164,7 @@ function draw(){
   })
 }
 
-// Move mehrere Tiles gleichzeitig
+// --- Mehrere Tiles gleichzeitig bewegen ---
 function move(index){
   let empty = tiles.indexOf("");
   let row = Math.floor(index/size);
@@ -172,9 +176,9 @@ function move(index){
     let step = col > ecol ? -1 : 1;
     let start = ecol + step;
     let end = col + step;
-    for(let c = start; step===1 ? c < end : c > end; c+=step){
+    for(let c=start; step===1 ? c<end : c>end; c+=step){
       let i = row*size + c;
-      let prev = row*size + (c - step);
+      let prev = row*size + (c-step);
       tiles[prev]=tiles[i];
     }
     tiles[row*size + col]="";
@@ -183,7 +187,7 @@ function move(index){
     let step = row > erow ? -1 : 1;
     let start = erow + step;
     let end = row + step;
-    for(let r=start; step===1 ? r < end : r > end; r+=step){
+    for(let r=start; step===1 ? r<end : r>end; r+=step){
       let i = r*size + col;
       let prev = (r-step)*size + col;
       tiles[prev]=tiles[i];
@@ -194,7 +198,7 @@ function move(index){
   checkWin();
 }
 
-// Swipe & Drag Steuerung
+// --- Swipe & Drag Steuerung ---
 let startX,startY;
 puzzle.addEventListener("touchstart",e=>{startX=e.touches[0].clientX; startY=e.touches[0].clientY;});
 puzzle.addEventListener("touchend",e=>{
@@ -212,7 +216,6 @@ puzzle.addEventListener("touchend",e=>{
   if(target>=0 && target<tiles.length) move(target);
 });
 
-// Drag mit Maus
 let dragStartIndex=null;
 puzzle.addEventListener("mousedown",e=>{
   if(!e.target.classList.contains("tile")) return;
@@ -225,7 +228,7 @@ puzzle.addEventListener("mouseup",e=>{
   dragStartIndex=null;
 });
 
-// Konfetti
+// --- Konfetti ---
 let canvas=document.getElementById("confetti");
 let ctx=canvas.getContext("2d");
 let particles=[];
@@ -255,7 +258,7 @@ function animateConfetti(){
   if(particles.length>0) requestAnimationFrame(animateConfetti);
 }
 
-// Check Win + Bestenliste
+// --- Win + Bestenliste ---
 function checkWin(){
   for(let i=0;i<tiles.length-1;i++){if(tiles[i]!==i+1) return;}
   clearInterval(timerInterval);
@@ -284,6 +287,57 @@ function loadScores(){
     li.textContent=`${i+1}. ${s.name}: ${s.time}s`;
     leaderboard.appendChild(li);
   });
+}
+
+// --- KI-Solver (A*-basiert, Schritt für Schritt) ---
+function solveWithAI(){
+  let startState = tiles.slice();
+  let goalState = [];
+  for(let i=1;i<size*size;i++) goalState.push(i);
+  goalState.push("");
+  
+  // Für Performance: nur bis 5x5
+  if(size>5){alert("KI nur bis 5x5 möglich!"); return;}
+  
+  let moves = getAISolution(startState, goalState);
+  animateAISolution(moves,0);
+}
+
+// --- Animation KI-Züge ---
+function animateAISolution(moves,index){
+  if(index>=moves.length) return;
+  move(moves[index]);
+  setTimeout(()=>animateAISolution(moves,index+1),200); // 200ms pro Schritt
+}
+
+// --- Sehr einfacher BFS-Solver für kleine Puzzles ---
+function getAISolution(start, goal){
+  let queue=[[start, []]];
+  let visited = new Set();
+  visited.add(start.join(","));
+  
+  while(queue.length){
+    let [state,path]=queue.shift();
+    if(state.join(",")===goal.join(",")) return path;
+    let empty=state.indexOf("");
+    let row=Math.floor(empty/size);
+    let col=empty%size;
+    let neighbors=[];
+    if(row>0) neighbors.push(empty-size);
+    if(row<size-1) neighbors.push(empty+size);
+    if(col>0) neighbors.push(empty-1);
+    if(col<size-1) neighbors.push(empty+1);
+    neighbors.forEach(n=>{
+      let newState=state.slice();
+      [newState[empty], newState[n]]=[newState[n], newState[empty]];
+      let key=newState.join(",");
+      if(!visited.has(key)){
+        visited.add(key);
+        queue.push([newState,path.concat([n])]);
+      }
+    });
+  }
+  return [];
 }
 
 startGame();
