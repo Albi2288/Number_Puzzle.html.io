@@ -3,34 +3,24 @@
 <head>
 <meta charset="UTF-8">
 <title>Bild Puzzle</title>
-
 <style>
-
 body{
 font-family:Arial;
 text-align:center;
 background:linear-gradient(135deg,#4facfe,#00f2fe);
 color:white;
 }
-
 #controls{
 margin:20px;
 }
-
-button,select{
+button,select,input{
 padding:8px;
 font-size:16px;
 margin:5px;
 border:none;
 border-radius:6px;
 }
-
-button{
-background:#ff9800;
-color:white;
-cursor:pointer;
-}
-
+button{background:#ff9800;color:white;cursor:pointer;}
 #puzzle{
 position:relative;
 width:360px;
@@ -39,7 +29,6 @@ margin:auto;
 background:black;
 touch-action:none;
 }
-
 .tile{
 position:absolute;
 background-size:360px 360px;
@@ -51,27 +40,29 @@ color:white;
 text-shadow:1px 1px 3px black;
 transition:0.25s;
 }
-
-.empty{
-background:none;
-}
-
+.empty{background:none;}
 canvas{
 position:fixed;
 top:0;
 left:0;
 pointer-events:none;
 }
-
+#leaderboard{
+background:rgba(255,255,255,0.15);
+backdrop-filter:blur(6px);
+padding:10px;
+margin:10px auto;
+width:220px;
+border-radius:10px;
+text-align:left;
+}
 </style>
 </head>
-
 <body>
 
 <h1>🧩 Bild Puzzle</h1>
 
 <div id="controls">
-
 Größe:
 <select id="size">
 <option value="3">3x3</option>
@@ -79,344 +70,228 @@ Größe:
 <option value="5">5x5</option>
 <option value="6">6x6</option>
 </select>
-
 <button onclick="startGame()">Neu starten</button>
-
+<br>
+Bild hochladen:
+<input type="file" id="imgUpload" accept="image/*">
 <p>⏱ Zeit: <span id="timer">0</span></p>
-
 </div>
 
 <div id="puzzle"></div>
-
 <canvas id="confetti"></canvas>
 
+<div id="leaderboard">
+<h3>🏆 Bestenliste</h3>
+<ul id="scores"></ul>
+</div>
+
 <script>
+let size, tiles=[], timer=0, timerInterval
+let puzzle=document.getElementById("puzzle")
+let timerText=document.getElementById("timer")
+let leaderboard=document.getElementById("scores")
+let imgSrc="IMG_2806.png"
 
-let size
-let tiles=[]
-let timer=0
-let timerInterval
-
-const puzzle=document.getElementById("puzzle")
-const timerText=document.getElementById("timer")
-
-const image="IMG_2806.png"
-
-
+// Bild Upload
+document.getElementById("imgUpload").addEventListener("change", e=>{
+let file=e.target.files[0]
+if(file){
+let reader=new FileReader()
+reader.onload=function(ev){imgSrc=ev.target.result; draw();}
+reader.readAsDataURL(file)
+}
+})
 
 function startGame(){
-
 size=parseInt(document.getElementById("size").value)
-
 tiles=[]
-
-for(let i=1;i<size*size;i++){
-tiles.push(i)
-}
-
+for(let i=1;i<size*size;i++) tiles.push(i)
 tiles.push("")
-
 shuffle()
-
 timer=0
 timerText.innerText=0
-
 clearInterval(timerInterval)
-
-timerInterval=setInterval(()=>{
-timer++
-timerText.innerText=timer
-},1000)
-
+timerInterval=setInterval(()=>{timer++; timerText.innerText=timer},1000)
 draw()
-
+loadScores()
 }
 
-
-
+// Shuffle durch gültige Züge
 function shuffle(){
-
 let moves = 200
-
 for(let i=0;i<moves;i++){
-
 let empty=tiles.indexOf("")
-
 let possible=[]
-
 let row=Math.floor(empty/size)
 let col=empty%size
-
 if(row>0) possible.push(empty-size)
 if(row<size-1) possible.push(empty+size)
 if(col>0) possible.push(empty-1)
 if(col<size-1) possible.push(empty+1)
-
 let target=possible[Math.floor(Math.random()*possible.length)]
-
-let temp=tiles[target]
-tiles[target]=tiles[empty]
-tiles[empty]=temp
-
+[tiles[target], tiles[empty]]=[tiles[empty], tiles[target]]
 }
-
 }
-
-
-
 
 function draw(){
-
 puzzle.innerHTML=""
-
 let tileSize=360/size
-
-for(let i=0;i<tiles.length;i++){
-
-let value=tiles[i]
-
+tiles.forEach((value,i)=>{
 let div=document.createElement("div")
-
 let row=Math.floor(i/size)
 let col=i%size
-
 div.style.width=tileSize+"px"
 div.style.height=tileSize+"px"
-
 div.style.left=(col*tileSize)+"px"
 div.style.top=(row*tileSize)+"px"
-
-if(value===""){
-
-div.className="tile empty"
-
-}else{
-
+if(value===""){div.className="tile empty"}
+else{
 div.className="tile"
-
 div.innerText=value
-
 div.style.fontSize=(tileSize/3)+"px"
-
 let imgRow=Math.floor((value-1)/size)
 let imgCol=(value-1)%size
-
-div.style.backgroundImage="url("+image+")"
-
-div.style.backgroundPosition=
-(-imgCol*tileSize)+"px "+
-(-imgRow*tileSize)+"px"
-
+div.style.backgroundImage="url("+imgSrc+")"
+div.style.backgroundPosition=(-imgCol*tileSize)+"px "+(-imgRow*tileSize)+"px"
 div.onclick=()=>move(i)
-
 }
-
 puzzle.appendChild(div)
-
-}
-
-}
-
-
-
-function move(index){
-
-let empty = tiles.indexOf("")
-
-let row = Math.floor(index/size)
-let col = index%size
-
-let erow = Math.floor(empty/size)
-let ecol = empty%size
-
-// gleiche Reihe
-if(row === erow){
-
-let step = col > ecol ? -1 : 1
-
-for(let c = ecol + step; step === 1 ? c <= col : c >= col; c += step){
-
-let i = row*size + c
-let prev = row*size + (c-step)
-
-tiles[prev] = tiles[i]
-
-}
-
-tiles[row*size + col] = ""
-
-}
-
-// gleiche Spalte
-else if(col === ecol){
-
-let step = row > erow ? -1 : 1
-
-for(let r = erow + step; step === 1 ? r <= row : r >= row; r += step){
-
-let i = r*size + col
-let prev = (r-step)*size + col
-
-tiles[prev] = tiles[i]
-
-}
-
-tiles[row*size + col] = ""
-
-}
-
-else{
-
-return
-
-}
-
-draw()
-checkWin()
-
-}
-
-
-
-
-function checkWin(){
-
-for(let i=0;i<tiles.length-1;i++){
-
-if(tiles[i]!==i+1) return
-
-}
-
-clearInterval(timerInterval)
-
-startConfetti()
-
-setTimeout(()=>{
-alert("🎉 Puzzle gelöst! Zeit: "+timer+" Sekunden")
-},200)
-
-}
-
-
-let startX,startY
-
-puzzle.addEventListener("touchstart",e=>{
-startX=e.touches[0].clientX
-startY=e.touches[0].clientY
 })
+}
 
+// Move mehrere Tiles gleichzeitig
+function move(index){
+    let empty = tiles.indexOf("")
+    let row = Math.floor(index/size)
+    let col = index % size
+    let erow = Math.floor(empty/size)
+    let ecol = empty % size
+
+    // gleiche Reihe
+    if(row === erow){
+        let step = col > ecol ? -1 : 1
+        let start = ecol + step
+        let end = col + step
+        for(let c = start; step === 1 ? c < end : c > end; c += step){
+            let i = row*size + c
+            let prev = row*size + (c - step)
+            tiles[prev] = tiles[i]
+        }
+        tiles[row*size + col] = ""
+    }
+    // gleiche Spalte
+    else if(col === ecol){
+        let step = row > erow ? -1 : 1
+        let start = erow + step
+        let end = row + step
+        for(let r = start; step === 1 ? r < end : r > end; r += step){
+            let i = r*size + col
+            let prev = (r - step)*size + col
+            tiles[prev] = tiles[i]
+        }
+        tiles[row*size + col] = ""
+    } else {
+        return // unverschiebbar
+    }
+
+    draw()
+    checkWin()
+}
+
+
+// Swipe & Drag
+let startX,startY
+puzzle.addEventListener("touchstart",e=>{startX=e.touches[0].clientX; startY=e.touches[0].clientY})
 puzzle.addEventListener("touchend",e=>{
-
 let dx=e.changedTouches[0].clientX-startX
 let dy=e.changedTouches[0].clientY-startY
-
 let empty=tiles.indexOf("")
-
 let target
-
 if(Math.abs(dx)>Math.abs(dy)){
-
 if(dx>30) target=empty-1
 else if(dx<-30) target=empty+1
-
 }else{
-
 if(dy>30) target=empty-size
 else if(dy<-30) target=empty+size
-
 }
-
-if(target>=0 && target<tiles.length){
-move(target)
-}
-
+if(target>=0 && target<tiles.length) move(target)
 })
 
-
-
-
-
-const canvas=document.getElementById("confetti")
-const ctx=canvas.getContext("2d")
-
-let particles=[]
-
-function startConfetti(){
-
-canvas.width=window.innerWidth
-canvas.height=window.innerHeight
-
-particles=[]
-
-for(let i=0;i<150;i++){
-
-particles.push({
-
-x:Math.random()*canvas.width,
-
-y:Math.random()*canvas.height-canvas.height,
-
-size:Math.random()*8+4,
-
-speed:Math.random()*3+2,
-
-color:`hsl(${Math.random()*360},100%,50%)`
-
-})
-
-}
-
-animateConfetti()
-
-}
-
-
-
-function animateConfetti(){
-
-ctx.clearRect(0,0,canvas.width,canvas.height)
-
-particles.forEach(p=>{
-
-p.y+=p.speed
-
-ctx.fillStyle=p.color
-
-ctx.fillRect(p.x,p.y,p.size,p.size)
-
-})
-
-particles=particles.filter(p=>p.y<canvas.height)
-
-if(particles.length>0){
-
-requestAnimationFrame(animateConfetti)
-
-}
-
-}
-
+// Drag mit Maus
 let dragStartIndex=null
-
 puzzle.addEventListener("mousedown",e=>{
-let tile=e.target
-if(!tile.classList.contains("tile")) return
-dragStartIndex=[...puzzle.children].indexOf(tile)
+if(!e.target.classList.contains("tile")) return
+dragStartIndex=[...puzzle.children].indexOf(e.target)
 })
-
 puzzle.addEventListener("mouseup",e=>{
-let tile=e.target
-if(!tile.classList.contains("tile")) return
-let endIndex=[...puzzle.children].indexOf(tile)
-
+if(!e.target.classList.contains("tile")) return
+let endIndex=[...puzzle.children].indexOf(e.target)
 move(endIndex)
-
 dragStartIndex=null
 })
 
+// Konfetti
+let canvas=document.getElementById("confetti")
+let ctx=canvas.getContext("2d")
+let particles=[]
+function startConfetti(){
+canvas.width=window.innerWidth
+canvas.height=window.innerHeight
+particles=[]
+for(let i=0;i<150;i++){
+particles.push({
+x:Math.random()*canvas.width,
+y:Math.random()*canvas.height-canvas.height,
+size:Math.random()*8+4,
+speed:Math.random()*3+2,
+color:`hsl(${Math.random()*360},100%,50%)`
+})
+}
+animateConfetti()
+}
+function animateConfetti(){
+ctx.clearRect(0,0,canvas.width,canvas.height)
+particles.forEach(p=>{
+p.y+=p.speed
+ctx.fillStyle=p.color
+ctx.fillRect(p.x,p.y,p.size,p.size)
+})
+particles=particles.filter(p=>p.y<canvas.height)
+if(particles.length>0) requestAnimationFrame(animateConfetti)
+}
+
+// Check Win + Bestenliste
+function checkWin(){
+for(let i=0;i<tiles.length-1;i++){if(tiles[i]!==i+1) return}
+clearInterval(timerInterval)
+startConfetti()
+let name=prompt("🎉 Gewonnen! Bitte deinen Namen eingeben:")
+if(!name) name="Spieler"
+saveScore(name,timer)
+loadScores()
+}
+
+function saveScore(name,time){
+let key="puzzle_"+size
+let scores=JSON.parse(localStorage.getItem(key))||[]
+scores.push({name,time})
+scores.sort((a,b)=>a.time-b.time)
+scores=scores.slice(0,5)
+localStorage.setItem(key,JSON.stringify(scores))
+}
+
+function loadScores(){
+let key="puzzle_"+size
+let scores=JSON.parse(localStorage.getItem(key))||[]
+leaderboard.innerHTML=""
+scores.forEach((s,i)=>{
+let li=document.createElement("li")
+li.textContent=`${i+1}. ${s.name}: ${s.time}s`
+leaderboard.appendChild(li)
+})
+}
 
 startGame()
-
 </script>
 
 </body>
