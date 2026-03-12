@@ -149,16 +149,19 @@ function draw(){
     div.style.height=tileSize+"px";
     div.style.left=(col*tileSize)+"px";
     div.style.top=(row*tileSize)+"px";
-    if(value===""){div.className="tile empty"}
-    else{
-      div.className="tile";
-      div.innerText=value;
-      div.style.fontSize=(tileSize/3)+"px";
-      let imgRow=Math.floor((value-1)/size);
-      let imgCol=(value-1)%size;
-      div.style.backgroundImage="url("+imgSrc+")";
-      div.style.backgroundPosition=(-imgCol*tileSize)+"px "+(-imgRow*tileSize)+"px";
-      div.onclick=()=>move(i);
+    if(value===""){
+        div.className="tile empty";
+        div.style.backgroundImage="none";
+        div.innerText="";
+    } else {
+        div.className="tile";
+        div.innerText=value;
+        div.style.fontSize=(tileSize/3)+"px";
+        let imgRow=Math.floor((value-1)/size);
+        let imgCol=(value-1)%size;
+        div.style.backgroundImage="url("+imgSrc+")";
+        div.style.backgroundPosition=(-imgCol*tileSize)+"px "+(-imgRow*tileSize)+"px";
+        div.onclick=()=>move(i);
     }
     puzzle.appendChild(div);
   })
@@ -174,25 +177,21 @@ function move(index){
 
   if(row===erow){ // gleiche Reihe
     let step = col > ecol ? -1 : 1;
-    let start = ecol + step;
-    let end = col + step;
-    for(let c=start; step===1 ? c<end : c>end; c+=step){
+    for(let c = ecol + step; step===1 ? c <= col : c >= col; c += step){
       let i = row*size + c;
       let prev = row*size + (c-step);
-      tiles[prev]=tiles[i];
+      tiles[prev] = tiles[i];
     }
-    tiles[row*size + col]="";
+    tiles[row*size + col] = "";
   }
   else if(col===ecol){ // gleiche Spalte
     let step = row > erow ? -1 : 1;
-    let start = erow + step;
-    let end = row + step;
-    for(let r=start; step===1 ? r<end : r>end; r+=step){
+    for(let r = erow + step; step===1 ? r <= row : r >= row; r += step){
       let i = r*size + col;
       let prev = (r-step)*size + col;
-      tiles[prev]=tiles[i];
+      tiles[prev] = tiles[i];
     }
-    tiles[row*size + col]="";
+    tiles[row*size + col] = "";
   } else return;
   draw();
   checkWin();
@@ -289,33 +288,28 @@ function loadScores(){
   });
 }
 
-// --- KI-Solver (A*-basiert, Schritt für Schritt) ---
+// --- KI-Solver ---
 function solveWithAI(){
   let startState = tiles.slice();
   let goalState = [];
   for(let i=1;i<size*size;i++) goalState.push(i);
   goalState.push("");
-  
-  // Für Performance: nur bis 5x5
   if(size>5){alert("KI nur bis 5x5 möglich!"); return;}
-  
   let moves = getAISolution(startState, goalState);
   animateAISolution(moves,0);
 }
 
-// --- Animation KI-Züge ---
 function animateAISolution(moves,index){
   if(index>=moves.length) return;
   move(moves[index]);
-  setTimeout(()=>animateAISolution(moves,index+1),200); // 200ms pro Schritt
+  setTimeout(()=>animateAISolution(moves,index+1),200);
 }
 
-// --- Sehr einfacher BFS-Solver für kleine Puzzles ---
+// Einfacher BFS-Solver für kleine Puzzles
 function getAISolution(start, goal){
   let queue=[[start, []]];
   let visited = new Set();
   visited.add(start.join(","));
-  
   while(queue.length){
     let [state,path]=queue.shift();
     if(state.join(",")===goal.join(",")) return path;
