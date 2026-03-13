@@ -2,11 +2,11 @@
 <html lang="de">
 <head>
 <meta charset="UTF-8">
-<title>Canvas-Bild-Puzzle Korrekt skaliert</title>
+<title>Canvas-Bild-Puzzle</title>
 <style>
 body{font-family:Arial;text-align:center;background:linear-gradient(135deg,#4facfe,#00f2fe);color:white;margin:0;}
 #controls{margin:20px;}
-button,select,input{padding:8px;font-size:16px;margin:5px;border:none;border-radius:6px;}
+button,select,input,label{padding:8px;font-size:16px;margin:5px;border:none;border-radius:6px;}
 button{background:#ff9800;color:white;cursor:pointer;}
 canvas#puzzleCanvas{background:black;display:block;margin:auto;touch-action:none;}
 canvas#confetti{position:fixed;top:0;left:0;pointer-events:none;}
@@ -15,7 +15,10 @@ canvas#confetti{position:fixed;top:0;left:0;pointer-events:none;}
 </head>
 <body>
 <h1>🧩 Canvas-Bild-Puzzle</h1>
+
 <div id="controls">
+
+Größe:
 <select id="size">
 <option value="3">3x3</option>
 <option value="4" selected>4x4</option>
@@ -36,23 +39,59 @@ canvas#confetti{position:fixed;top:0;left:0;pointer-events:none;}
 <option value="19">19x19</option>
 <option value="20">20x20</option>
 </select>
+
 <button onclick="startGame()">Neu starten</button>
+
 <br>
-Bild hochladen:<input type="file" id="imgUpload" accept="image/*">
+
+Bild hochladen:
+<input type="file" id="imgUpload" accept="image/*">
+
+<br>
+
+<label>
+<input type="checkbox" id="toggleNumbers" checked>
+Zahlen anzeigen
+</label>
+
 <p>⏱ Zeit: <span id="timer">0</span></p>
+
 </div>
+
 <canvas id="puzzleCanvas" width="360" height="360"></canvas>
 <canvas id="confetti"></canvas>
+
 <div id="leaderboard">
 <h3>🏆 Bestenliste</h3>
 <ul id="scores"></ul>
 </div>
+
 <script>
-const canvas=document.getElementById("puzzleCanvas"), ctx=canvas.getContext("2d"), confetti=document.getElementById("confetti"), cctx=confetti.getContext("2d");
-const timerText=document.getElementById("timer"), leaderboard=document.getElementById("scores"), sizeSelect=document.getElementById("size"), imgUpload=document.getElementById("imgUpload");
-let img=new Image(), size=4, tiles=[], emptyIndex, tileSize=360/size, timer=0, timerInterval, particles=[];
+
+const canvas=document.getElementById("puzzleCanvas");
+const ctx=canvas.getContext("2d");
+
+const confetti=document.getElementById("confetti");
+const cctx=confetti.getContext("2d");
+
+const timerText=document.getElementById("timer");
+const leaderboard=document.getElementById("scores");
+const sizeSelect=document.getElementById("size");
+const imgUpload=document.getElementById("imgUpload");
+const toggleNumbers=document.getElementById("toggleNumbers");
+
+let img=new Image();
+let size=4;
+let tiles=[];
+let emptyIndex;
+let tileSize=360/size;
+let timer=0;
+let timerInterval;
+let particles=[];
+let showNumbers=true;
 
 img.src="IMG_2806.png";
+
 img.onload=()=>{startGame();};
 
 imgUpload.addEventListener("change",e=>{
@@ -64,29 +103,64 @@ imgUpload.addEventListener("change",e=>{
   }
 });
 
+toggleNumbers.addEventListener("change",()=>{
+  showNumbers=toggleNumbers.checked;
+  drawBoard();
+});
+
 function startGame(){
+
   size=parseInt(sizeSelect.value);
+
   tileSize=360/size;
+
   tiles=[];
   for(let i=1;i<size*size;i++) tiles.push(i);
   tiles.push("");
+
   emptyIndex=tiles.length-1;
+
   shuffle();
-  timer=0; timerText.innerText=timer;
+
+  timer=0;
+  timerText.innerText=timer;
+
   clearInterval(timerInterval);
-  timerInterval=setInterval(()=>{timer++; timerText.innerText=timer;},1000);
+  timerInterval=setInterval(()=>{
+    timer++;
+    timerText.innerText=timer;
+  },1000);
+
+  if(size>=10){
+    showNumbers=false;
+    toggleNumbers.checked=false;
+  }else{
+    showNumbers=true;
+    toggleNumbers.checked=true;
+  }
+
   drawBoard();
   loadScores();
 }
 
 function shuffle(){
-  for(let i=0;i<200;i++){
-    const row=Math.floor(emptyIndex/size), col=emptyIndex%size, moves=[];
+
+  const shuffleMoves=size*size*20;
+
+  for(let i=0;i<shuffleMoves;i++){
+
+    const row=Math.floor(emptyIndex/size);
+    const col=emptyIndex%size;
+
+    const moves=[];
+
     if(row>0) moves.push(emptyIndex-size);
     if(row<size-1) moves.push(emptyIndex+size);
     if(col>0) moves.push(emptyIndex-1);
     if(col<size-1) moves.push(emptyIndex+1);
+
     const target=moves[Math.floor(Math.random()*moves.length)];
+
     swap(target);
   }
 }
@@ -98,144 +172,174 @@ function swap(i){
 }
 
 function drawBoard(){
+
   ctx.clearRect(0,0,360,360);
-  const imgTileWidth = img.width/size;
-  const imgTileHeight = img.height/size;
+
+  const imgTileWidth=img.width/size;
+  const imgTileHeight=img.height/size;
+
   for(let i=0;i<tiles.length;i++){
+
     if(tiles[i]==="") continue;
-    const row=Math.floor(i/size), col=i%size;
+
+    const row=Math.floor(i/size);
+    const col=i%size;
+
     const val=tiles[i]-1;
-    const srcRow=Math.floor(val/size), srcCol=val%size;
-    ctx.drawImage(img, srcCol*imgTileWidth, srcRow*imgTileHeight, imgTileWidth, imgTileHeight, col*tileSize, row*tileSize, tileSize, tileSize);
-    ctx.fillStyle="white"; ctx.font=`${tileSize/3}px Arial`; ctx.textAlign="center"; ctx.textBaseline="middle";
-    ctx.fillText(tiles[i], col*tileSize+tileSize/2, row*tileSize+tileSize/2);
+
+    const srcRow=Math.floor(val/size);
+    const srcCol=val%size;
+
+    ctx.drawImage(
+      img,
+      srcCol*imgTileWidth,
+      srcRow*imgTileHeight,
+      imgTileWidth,
+      imgTileHeight,
+      col*tileSize,
+      row*tileSize,
+      tileSize,
+      tileSize
+    );
+
+    if(showNumbers){
+      ctx.fillStyle="white";
+      ctx.font=`${tileSize/3}px Arial`;
+      ctx.textAlign="center";
+      ctx.textBaseline="middle";
+      ctx.fillText(
+        tiles[i],
+        col*tileSize+tileSize/2,
+        row*tileSize+tileSize/2
+      );
+    }
+
   }
 }
-
-let dragStart=null;
 
 canvas.addEventListener("pointerdown",e=>{
-  const rect=canvas.getBoundingClientRect();
-  const x=Math.floor((e.clientX-rect.left)/tileSize);
-  const y=Math.floor((e.clientY-rect.top)/tileSize);
-  dragStart={x,y};
-});
-
-canvas.addEventListener("pointerup",e=>{
-  if(!dragStart) return;
 
   const rect=canvas.getBoundingClientRect();
+
   const x=Math.floor((e.clientX-rect.left)/tileSize);
   const y=Math.floor((e.clientY-rect.top)/tileSize);
 
-  const dx=x-dragStart.x;
-  const dy=y-dragStart.y;
+  const index=y*size+x;
 
-  // horizontales Slide
-  if(dragStart.y===y){
-    const row=y;
-    const startIndex=row*size+dragStart.x;
-    const endIndex=row*size+x;
-    slideRow(startIndex,endIndex);
-  }
+  moveTile(index);
 
-  // vertikales Slide
-  else if(dragStart.x===x){
-    const col=x;
-    const startIndex=dragStart.y*size+col;
-    const endIndex=y*size+col;
-    slideColumn(startIndex,endIndex);
-  }
-
-  dragStart=null;
 });
-
-function slideRow(start,end){
-  const row=Math.floor(start/size);
-  const emptyRow=Math.floor(emptyIndex/size);
-  if(row!==emptyRow) return;
-
-  const startCol=start%size;
-  const endCol=end%size;
-  const emptyCol=emptyIndex%size;
-
-  if(endCol<emptyCol && startCol>=endCol){
-    for(let c=emptyCol-1;c>=endCol;c--){
-      swap(row*size+c);
-    }
-  }
-  else if(endCol>emptyCol && startCol<=endCol){
-    for(let c=emptyCol+1;c<=endCol;c++){
-      swap(row*size+c);
-    }
-  }
-
-  drawBoard();
-  checkWin();
-}
-
-function slideColumn(start,end){
-  const col=start%size;
-  const emptyCol=emptyIndex%size;
-  if(col!==emptyCol) return;
-
-  const startRow=Math.floor(start/size);
-  const endRow=Math.floor(end/size);
-  const emptyRow=Math.floor(emptyIndex/size);
-
-  if(endRow<emptyRow && startRow>=endRow){
-    for(let r=emptyRow-1;r>=endRow;r--){
-      swap(r*size+col);
-    }
-  }
-  else if(endRow>emptyRow && startRow<=endRow){
-    for(let r=emptyRow+1;r<=endRow;r++){
-      swap(r*size+col);
-    }
-  }
-
-  drawBoard();
-  checkWin();
-}
 
 function moveTile(index){
-  const row=Math.floor(index/size), col=index%size;
-  const erow=Math.floor(emptyIndex/size), ecol=emptyIndex%size;
-  if(row===erow && Math.abs(col-ecol)===1 || col===ecol && Math.abs(row-erow)===1){
+
+  const row=Math.floor(index/size);
+  const col=index%size;
+
+  const erow=Math.floor(emptyIndex/size);
+  const ecol=emptyIndex%size;
+
+  if(
+    (row===erow && Math.abs(col-ecol)===1) ||
+    (col===ecol && Math.abs(row-erow)===1)
+  ){
+
     swap(index);
+
     drawBoard();
+
     checkWin();
   }
 }
 
 function checkWin(){
-  for(let i=0;i<tiles.length-1;i++) if(tiles[i]!==i+1) return;
-  clearInterval(timerInterval); startConfetti();
-  let name=prompt("🎉 Gewonnen! Name:"); if(!name) name="Spieler";
-  saveScore(name,timer); loadScores();
+
+  for(let i=0;i<tiles.length-1;i++){
+    if(tiles[i]!==i+1) return;
+  }
+
+  clearInterval(timerInterval);
+
+  startConfetti();
+
+  let name=prompt("🎉 Gewonnen! Name:");
+
+  if(!name) name="Spieler";
+
+  saveScore(name,timer);
+  loadScores();
 }
 
 function saveScore(name,time){
-  let key="puzzle_"+size; let scores=JSON.parse(localStorage.getItem(key))||[];
-  scores.push({name,time}); scores.sort((a,b)=>a.time-b.time); scores=scores.slice(0,5);
+
+  let key="puzzle_"+size;
+
+  let scores=JSON.parse(localStorage.getItem(key))||[];
+
+  scores.push({name,time});
+
+  scores.sort((a,b)=>a.time-b.time);
+
+  scores=scores.slice(0,5);
+
   localStorage.setItem(key,JSON.stringify(scores));
 }
+
 function loadScores(){
-  let key="puzzle_"+size; let scores=JSON.parse(localStorage.getItem(key))||[]; leaderboard.innerHTML="";
-  scores.forEach((s,i)=>{ let li=document.createElement("li"); li.textContent=`${i+1}. ${s.name}: ${s.time}s`; leaderboard.appendChild(li); });
+
+  let key="puzzle_"+size;
+
+  let scores=JSON.parse(localStorage.getItem(key))||[];
+
+  leaderboard.innerHTML="";
+
+  scores.forEach((s,i)=>{
+
+    let li=document.createElement("li");
+
+    li.textContent=`${i+1}. ${s.name}: ${s.time}s`;
+
+    leaderboard.appendChild(li);
+
+  });
 }
 
 function startConfetti(){
-  confetti.width=window.innerWidth; confetti.height=window.innerHeight; particles=[];
-  for(let i=0;i<150;i++) particles.push({x:Math.random()*confetti.width, y:Math.random()*confetti.height-confetti.height, size:Math.random()*8+4, speed:Math.random()*3+2, color:`hsl(${Math.random()*360},100%,50%)`});
+
+  confetti.width=window.innerWidth;
+  confetti.height=window.innerHeight;
+
+  particles=[];
+
+  for(let i=0;i<150;i++){
+
+    particles.push({
+      x:Math.random()*confetti.width,
+      y:Math.random()*confetti.height-confetti.height,
+      size:Math.random()*8+4,
+      speed:Math.random()*3+2,
+      color:`hsl(${Math.random()*360},100%,50%)`
+    });
+  }
+
   animateConfetti();
 }
+
 function animateConfetti(){
+
   cctx.clearRect(0,0,confetti.width,confetti.height);
-  particles.forEach(p=>{p.y+=p.speed; cctx.fillStyle=p.color; cctx.fillRect(p.x,p.y,p.size,p.size);});
+
+  particles.forEach(p=>{
+    p.y+=p.speed;
+    cctx.fillStyle=p.color;
+    cctx.fillRect(p.x,p.y,p.size,p.size);
+  });
+
   particles=particles.filter(p=>p.y<confetti.height);
+
   if(particles.length>0) requestAnimationFrame(animateConfetti);
 }
+
 </script>
+
 </body>
 </html>
