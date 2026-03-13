@@ -112,13 +112,91 @@ function drawBoard(){
   }
 }
 
+let dragStart=null;
+
 canvas.addEventListener("pointerdown",e=>{
   const rect=canvas.getBoundingClientRect();
   const x=Math.floor((e.clientX-rect.left)/tileSize);
   const y=Math.floor((e.clientY-rect.top)/tileSize);
-  const index=y*size+x;
-  moveTile(index);
+  dragStart={x,y};
 });
+
+canvas.addEventListener("pointerup",e=>{
+  if(!dragStart) return;
+
+  const rect=canvas.getBoundingClientRect();
+  const x=Math.floor((e.clientX-rect.left)/tileSize);
+  const y=Math.floor((e.clientY-rect.top)/tileSize);
+
+  const dx=x-dragStart.x;
+  const dy=y-dragStart.y;
+
+  // horizontales Slide
+  if(dragStart.y===y){
+    const row=y;
+    const startIndex=row*size+dragStart.x;
+    const endIndex=row*size+x;
+    slideRow(startIndex,endIndex);
+  }
+
+  // vertikales Slide
+  else if(dragStart.x===x){
+    const col=x;
+    const startIndex=dragStart.y*size+col;
+    const endIndex=y*size+col;
+    slideColumn(startIndex,endIndex);
+  }
+
+  dragStart=null;
+});
+
+function slideRow(start,end){
+  const row=Math.floor(start/size);
+  const emptyRow=Math.floor(emptyIndex/size);
+  if(row!==emptyRow) return;
+
+  const startCol=start%size;
+  const endCol=end%size;
+  const emptyCol=emptyIndex%size;
+
+  if(endCol<emptyCol && startCol>=endCol){
+    for(let c=emptyCol-1;c>=endCol;c--){
+      swap(row*size+c);
+    }
+  }
+  else if(endCol>emptyCol && startCol<=endCol){
+    for(let c=emptyCol+1;c<=endCol;c++){
+      swap(row*size+c);
+    }
+  }
+
+  drawBoard();
+  checkWin();
+}
+
+function slideColumn(start,end){
+  const col=start%size;
+  const emptyCol=emptyIndex%size;
+  if(col!==emptyCol) return;
+
+  const startRow=Math.floor(start/size);
+  const endRow=Math.floor(end/size);
+  const emptyRow=Math.floor(emptyIndex/size);
+
+  if(endRow<emptyRow && startRow>=endRow){
+    for(let r=emptyRow-1;r>=endRow;r--){
+      swap(r*size+col);
+    }
+  }
+  else if(endRow>emptyRow && startRow<=endRow){
+    for(let r=emptyRow+1;r<=endRow;r++){
+      swap(r*size+col);
+    }
+  }
+
+  drawBoard();
+  checkWin();
+}
 
 function moveTile(index){
   const row=Math.floor(index/size), col=index%size;
