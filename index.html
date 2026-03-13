@@ -11,13 +11,13 @@ button{background:#ff9800;color:white;cursor:pointer;}
 canvas#puzzleCanvas{background:black;display:block;margin:auto;touch-action:none;}
 canvas#confetti{position:fixed;top:0;left:0;pointer-events:none;}
 #leaderboard{background:rgba(255,255,255,0.15);backdrop-filter:blur(6px);padding:10px;margin:10px auto;width:220px;border-radius:10px;text-align:left;}
+#instructions{background:rgba(255,255,255,0.15);backdrop-filter:blur(6px);padding:10px;margin:10px auto;width:300px;border-radius:10px;text-align:left;display:none;color:black;}
 </style>
 </head>
 <body>
 <h1>🧩 Canvas-Bild-Puzzle</h1>
 
 <div id="controls">
-
 Größe:
 <select id="size">
 <option value="3">3x3</option>
@@ -41,21 +41,25 @@ Größe:
 </select>
 
 <button onclick="startGame()">Neu starten</button>
-
 <br>
-
 Bild hochladen:
 <input type="file" id="imgUpload" accept="image/*">
-
 <br>
-
 <label>
 <input type="checkbox" id="toggleNumbers" checked>
 Zahlen anzeigen
 </label>
-
+<br>
+<button onclick="showInstructions()">📖 Anleitung</button>
 <p>⏱ Zeit: <span id="timer">0</span></p>
+</div>
 
+<div id="instructions">
+<h3>Anleitung</h3>
+<p>Klicke auf ein benachbartes Feld, um es zu verschieben.</p>
+<p>Das Ziel ist es, das Bild wieder korrekt zusammenzusetzen.</p>
+<p>Du kannst die Zahlen ein- oder ausschalten. Bei großen Puzzles werden sie automatisch deaktiviert.</p>
+<p>Viel Spaß beim Puzzeln! 🧩</p>
 </div>
 
 <canvas id="puzzleCanvas" width="360" height="360"></canvas>
@@ -67,18 +71,16 @@ Zahlen anzeigen
 </div>
 
 <script>
-
 const canvas=document.getElementById("puzzleCanvas");
 const ctx=canvas.getContext("2d");
-
 const confetti=document.getElementById("confetti");
 const cctx=confetti.getContext("2d");
-
 const timerText=document.getElementById("timer");
 const leaderboard=document.getElementById("scores");
 const sizeSelect=document.getElementById("size");
 const imgUpload=document.getElementById("imgUpload");
 const toggleNumbers=document.getElementById("toggleNumbers");
+const instructionsDiv=document.getElementById("instructions");
 
 let img=new Image();
 let size=4;
@@ -91,7 +93,6 @@ let particles=[];
 let showNumbers=true;
 
 img.src="IMG_2806.png";
-
 img.onload=()=>{startGame();};
 
 imgUpload.addEventListener("change",e=>{
@@ -108,238 +109,97 @@ toggleNumbers.addEventListener("change",()=>{
   drawBoard();
 });
 
+function showInstructions(){
+  instructionsDiv.style.display = instructionsDiv.style.display === 'none' ? 'block' : 'none';
+}
+
 function startGame(){
-
   size=parseInt(sizeSelect.value);
-
   tileSize=360/size;
-
   tiles=[];
   for(let i=1;i<size*size;i++) tiles.push(i);
   tiles.push("");
-
   emptyIndex=tiles.length-1;
-
   shuffle();
-
-  timer=0;
-  timerText.innerText=timer;
-
+  timer=0; timerText.innerText=timer;
   clearInterval(timerInterval);
-  timerInterval=setInterval(()=>{
-    timer++;
-    timerText.innerText=timer;
-  },1000);
-
-  if(size>=10){
-    showNumbers=false;
-    toggleNumbers.checked=false;
-  }else{
-    showNumbers=true;
-    toggleNumbers.checked=true;
-  }
-
+  timerInterval=setInterval(()=>{timer++; timerText.innerText=timer;},1000);
+  if(size>=10){ showNumbers=false; toggleNumbers.checked=false; } else { showNumbers=true; toggleNumbers.checked=true; }
   drawBoard();
   loadScores();
 }
 
 function shuffle(){
-
   const shuffleMoves=size*size*20;
-
   for(let i=0;i<shuffleMoves;i++){
-
     const row=Math.floor(emptyIndex/size);
     const col=emptyIndex%size;
-
     const moves=[];
-
     if(row>0) moves.push(emptyIndex-size);
     if(row<size-1) moves.push(emptyIndex+size);
     if(col>0) moves.push(emptyIndex-1);
     if(col<size-1) moves.push(emptyIndex+1);
-
     const target=moves[Math.floor(Math.random()*moves.length)];
-
     swap(target);
   }
 }
 
-function swap(i){
-  tiles[emptyIndex]=tiles[i];
-  tiles[i]="";
-  emptyIndex=i;
-}
+function swap(i){ tiles[emptyIndex]=tiles[i]; tiles[i]=""; emptyIndex=i; }
 
 function drawBoard(){
-
   ctx.clearRect(0,0,360,360);
-
   const imgTileWidth=img.width/size;
   const imgTileHeight=img.height/size;
-
   for(let i=0;i<tiles.length;i++){
-
     if(tiles[i]==="") continue;
-
-    const row=Math.floor(i/size);
-    const col=i%size;
-
+    const row=Math.floor(i/size), col=i%size;
     const val=tiles[i]-1;
-
-    const srcRow=Math.floor(val/size);
-    const srcCol=val%size;
-
-    ctx.drawImage(
-      img,
-      srcCol*imgTileWidth,
-      srcRow*imgTileHeight,
-      imgTileWidth,
-      imgTileHeight,
-      col*tileSize,
-      row*tileSize,
-      tileSize,
-      tileSize
-    );
-
-    if(showNumbers){
-      ctx.fillStyle="white";
-      ctx.font=`${tileSize/3}px Arial`;
-      ctx.textAlign="center";
-      ctx.textBaseline="middle";
-      ctx.fillText(
-        tiles[i],
-        col*tileSize+tileSize/2,
-        row*tileSize+tileSize/2
-      );
-    }
-
+    const srcRow=Math.floor(val/size), srcCol=val%size;
+    ctx.drawImage(img, srcCol*imgTileWidth, srcRow*imgTileHeight, imgTileWidth, imgTileHeight, col*tileSize, row*tileSize, tileSize, tileSize);
+    if(showNumbers){ ctx.fillStyle="white"; ctx.font=`${tileSize/3}px Arial`; ctx.textAlign="center"; ctx.textBaseline="middle"; ctx.fillText(tiles[i], col*tileSize+tileSize/2, row*tileSize+tileSize/2); }
   }
 }
 
 canvas.addEventListener("pointerdown",e=>{
-
   const rect=canvas.getBoundingClientRect();
-
   const x=Math.floor((e.clientX-rect.left)/tileSize);
   const y=Math.floor((e.clientY-rect.top)/tileSize);
-
   const index=y*size+x;
-
   moveTile(index);
-
 });
 
 function moveTile(index){
-
-  const row=Math.floor(index/size);
-  const col=index%size;
-
-  const erow=Math.floor(emptyIndex/size);
-  const ecol=emptyIndex%size;
-
-  if(
-    (row===erow && Math.abs(col-ecol)===1) ||
-    (col===ecol && Math.abs(row-erow)===1)
-  ){
-
-    swap(index);
-
-    drawBoard();
-
-    checkWin();
-  }
+  const row=Math.floor(index/size), col=index%size;
+  const erow=Math.floor(emptyIndex/size), ecol=emptyIndex%size;
+  if((row===erow && Math.abs(col-ecol)===1) || (col===ecol && Math.abs(row-erow)===1)){ swap(index); drawBoard(); checkWin(); }
 }
 
 function checkWin(){
-
-  for(let i=0;i<tiles.length-1;i++){
-    if(tiles[i]!==i+1) return;
-  }
-
-  clearInterval(timerInterval);
-
-  startConfetti();
-
-  let name=prompt("🎉 Gewonnen! Name:");
-
-  if(!name) name="Spieler";
-
-  saveScore(name,timer);
-  loadScores();
+  for(let i=0;i<tiles.length-1;i++) if(tiles[i]!==i+1) return;
+  clearInterval(timerInterval); startConfetti(); let name=prompt("🎉 Gewonnen! Name:"); if(!name) name="Spieler"; saveScore(name,timer); loadScores();
 }
 
 function saveScore(name,time){
-
-  let key="puzzle_"+size;
-
-  let scores=JSON.parse(localStorage.getItem(key))||[];
-
-  scores.push({name,time});
-
-  scores.sort((a,b)=>a.time-b.time);
-
-  scores=scores.slice(0,5);
-
-  localStorage.setItem(key,JSON.stringify(scores));
+  let key="puzzle_"+size; let scores=JSON.parse(localStorage.getItem(key))||[]; scores.push({name,time}); scores.sort((a,b)=>a.time-b.time); scores=scores.slice(0,5); localStorage.setItem(key,JSON.stringify(scores));
 }
 
 function loadScores(){
-
-  let key="puzzle_"+size;
-
-  let scores=JSON.parse(localStorage.getItem(key))||[];
-
-  leaderboard.innerHTML="";
-
-  scores.forEach((s,i)=>{
-
-    let li=document.createElement("li");
-
-    li.textContent=`${i+1}. ${s.name}: ${s.time}s`;
-
-    leaderboard.appendChild(li);
-
-  });
+  let key="puzzle_"+size; let scores=JSON.parse(localStorage.getItem(key))||[]; leaderboard.innerHTML=""; scores.forEach((s,i)=>{ let li=document.createElement("li"); li.textContent=`${i+1}. ${s.name}: ${s.time}s`; leaderboard.appendChild(li); });
 }
 
 function startConfetti(){
-
-  confetti.width=window.innerWidth;
-  confetti.height=window.innerHeight;
-
-  particles=[];
-
-  for(let i=0;i<150;i++){
-
-    particles.push({
-      x:Math.random()*confetti.width,
-      y:Math.random()*confetti.height-confetti.height,
-      size:Math.random()*8+4,
-      speed:Math.random()*3+2,
-      color:`hsl(${Math.random()*360},100%,50%)`
-    });
-  }
-
+  confetti.width=window.innerWidth; confetti.height=window.innerHeight; particles=[];
+  for(let i=0;i<150;i++) particles.push({x:Math.random()*confetti.width, y:Math.random()*confetti.height-confetti.height, size:Math.random()*8+4, speed:Math.random()*3+2, color:`hsl(${Math.random()*360},100%,50%)`});
   animateConfetti();
 }
 
 function animateConfetti(){
-
   cctx.clearRect(0,0,confetti.width,confetti.height);
-
-  particles.forEach(p=>{
-    p.y+=p.speed;
-    cctx.fillStyle=p.color;
-    cctx.fillRect(p.x,p.y,p.size,p.size);
-  });
-
+  particles.forEach(p=>{p.y+=p.speed; cctx.fillStyle=p.color; cctx.fillRect(p.x,p.y,p.size,p.size);});
   particles=particles.filter(p=>p.y<confetti.height);
-
   if(particles.length>0) requestAnimationFrame(animateConfetti);
 }
 
 </script>
-
 </body>
 </html>
